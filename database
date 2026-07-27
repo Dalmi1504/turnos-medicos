@@ -1,0 +1,464 @@
+
+-- =====================================================
+-- BASE DE DATOS: CLÍNICA
+-- Sistema de gestión de turnos médicos
+-- Compatible con MySQL
+-- =====================================================
+
+CREATE DATABASE IF NOT EXISTS clinica
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+USE clinica;
+
+-- =====================================================
+-- MÓDULO: COBERTURAS MÉDICAS
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS cobertura_medica (
+    id_cobertura INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(100) NOT NULL,
+    tipo ENUM(
+        'Obra Social',
+        'Prepaga',
+        'Particular'
+    ) NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+
+    UNIQUE (nombre)
+);
+
+-- =====================================================
+-- MÓDULO: PACIENTES
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS paciente (
+    id_paciente INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(30) NOT NULL,
+    apellido VARCHAR(30) NOT NULL,
+    dni VARCHAR(20) NOT NULL,
+    fecha_nacimiento DATE,
+    telefono VARCHAR(50),
+    email VARCHAR(100),
+
+    id_cobertura INT,
+    plan VARCHAR(100),
+    numero_credencial VARCHAR(100),
+
+    bloqueado BOOLEAN NOT NULL DEFAULT FALSE,
+    motivo_bloqueo VARCHAR(255),
+
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+
+    fecha_alta DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_modificacion DATETIME
+        NOT NULL
+        DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_paciente_dni
+        UNIQUE (dni),
+
+    CONSTRAINT fk_paciente_cobertura
+        FOREIGN KEY (id_cobertura)
+        REFERENCES cobertura_medica(id_cobertura)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+);
+
+-- =====================================================
+-- MÓDULO: MÉDICOS
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS medico (
+    id_medico INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(30) NOT NULL,
+    apellido VARCHAR(30) NOT NULL,
+    especialidad VARCHAR(50) NOT NULL,
+    matricula VARCHAR(20) NOT NULL,
+    telefono VARCHAR(50),
+    email VARCHAR(100),
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+
+    CONSTRAINT uq_medico_matricula
+        UNIQUE (matricula)
+);
+
+-- =====================================================
+-- MÓDULO: USUARIOS Y PERMISOS
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS usuario (
+    id_usuario INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+
+    id_paciente INT,
+    id_medico INT,
+
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    ultimo_acceso DATETIME,
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_usuario_username
+        UNIQUE (username),
+
+    CONSTRAINT uq_usuario_email
+        UNIQUE (email),
+
+    CONSTRAINT uq_usuario_paciente
+        UNIQUE (id_paciente),
+
+    CONSTRAINT uq_usuario_medico
+        UNIQUE (id_medico),
+
+    CONSTRAINT fk_usuario_paciente
+        FOREIGN KEY (id_paciente)
+        REFERENCES paciente(id_paciente)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL,
+
+    CONSTRAINT fk_usuario_medico
+        FOREIGN KEY (id_medico)
+        REFERENCES medico(id_medico)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS rol (
+    id_rol INT PRIMARY KEY AUTO_INCREMENT,
+    descripcion ENUM(
+        'Médico',
+        'Paciente',
+        'Secretaria',
+        'Administrador'
+    ) NOT NULL,
+
+    CONSTRAINT uq_rol_descripcion
+        UNIQUE (descripcion)
+);
+
+CREATE TABLE IF NOT EXISTS usuario_rol (
+    id_usuario INT NOT NULL,
+    id_rol INT NOT NULL,
+
+    PRIMARY KEY (id_usuario, id_rol),
+
+    CONSTRAINT fk_usuario_rol_usuario
+        FOREIGN KEY (id_usuario)
+        REFERENCES usuario(id_usuario)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_usuario_rol_rol
+        FOREIGN KEY (id_rol)
+        REFERENCES rol(id_rol)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
+
+-- Un usuario puede tener más de un rol.
+-- Por ejemplo: Médico + Administrador.
+
+-- =====================================================
+-- MÓDULO: ESTADOS DE LOS TURNOS
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS estado_turno (
+    id_estado INT PRIMARY KEY AUTO_INCREMENT,
+    descripcion VARCHAR(100) NOT NULL,
+
+    CONSTRAINT uq_estado_turno_descripcion
+        UNIQUE (descripcion)
+);
+
+-- =====================================================
+-- MÓDULO: AGENDA MÉDICA
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS agenda_medica (
+    id_agenda INT PRIMARY KEY AUTO_INCREMENT,
+    id_medico INT NOT NULL,
+
+    dia_semana ENUM(
+        'Lunes',
+        'Martes',
+        'Miércoles',
+        'Jueves',
+        'Viernes',
+        'Sábado',
+        'Domingo'
+    ) NOT NULL,
+
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+
+    -- Duración expresada en minutos
+    duracion_turno INT NOT NULL,
+
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+
+    CONSTRAINT fk_agenda_medico
+        FOREIGN KEY (id_medico)
+        REFERENCES medico(id_medico)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
+
+-- =====================================================
+-- MÓDULO: BLOQUEOS DE AGENDA
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS bloqueo_agenda (
+    id_bloqueo INT PRIMARY KEY AUTO_INCREMENT,
+    id_medico INT NOT NULL,
+
+    fecha DATE NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+    motivo VARCHAR(255) NOT NULL,
+
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_bloqueo_medico
+        FOREIGN KEY (id_medico)
+        REFERENCES medico(id_medico)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
+
+-- =====================================================
+-- MÓDULO: TURNOS
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS turno (
+    id_turno INT PRIMARY KEY AUTO_INCREMENT,
+
+    fecha DATE NOT NULL,
+    hora TIME NOT NULL,
+
+    motivo_consulta VARCHAR(255),
+
+    tipo_turno ENUM(
+        'Programado',
+        'Demanda espontánea'
+    ) NOT NULL DEFAULT 'Programado',
+
+    id_paciente INT NOT NULL,
+    id_medico INT NOT NULL,
+    id_estado INT NOT NULL,
+
+    -- Información utilizada por recepción
+    hora_llegada DATETIME,
+
+    estado_recepcion ENUM(
+        'Pendiente',
+        'En espera',
+        'En consulta',
+        'Finalizado',
+        'Ausente'
+    ) NOT NULL DEFAULT 'Pendiente',
+
+    observaciones VARCHAR(255),
+
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_modificacion DATETIME
+        NOT NULL
+        DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_turno_medico_fecha_hora
+        UNIQUE (id_medico, fecha, hora),
+
+    CONSTRAINT fk_turno_paciente
+        FOREIGN KEY (id_paciente)
+        REFERENCES paciente(id_paciente)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_turno_medico
+        FOREIGN KEY (id_medico)
+        REFERENCES medico(id_medico)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_turno_estado
+        FOREIGN KEY (id_estado)
+        REFERENCES estado_turno(id_estado)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+);
+
+-- =====================================================
+-- MÓDULO: HISTORIA CLÍNICA
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS historia_clinica (
+    id_hc INT PRIMARY KEY AUTO_INCREMENT,
+    id_paciente INT NOT NULL,
+
+    antecedentes TEXT,
+    alergias TEXT,
+    observaciones_generales TEXT,
+
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_historia_paciente
+        UNIQUE (id_paciente),
+
+    CONSTRAINT fk_historia_paciente
+        FOREIGN KEY (id_paciente)
+        REFERENCES paciente(id_paciente)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
+
+-- =====================================================
+-- MÓDULO: EVOLUCIONES MÉDICAS
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS evolucion (
+    id_evolucion INT PRIMARY KEY AUTO_INCREMENT,
+    id_hc INT NOT NULL,
+    id_medico INT NOT NULL,
+    id_turno INT,
+
+    fecha_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    descripcion TEXT NOT NULL,
+    diagnostico TEXT,
+    tratamiento TEXT,
+    indicaciones TEXT,
+    ruta_archivo VARCHAR(255),
+
+    CONSTRAINT fk_evolucion_historia
+        FOREIGN KEY (id_hc)
+        REFERENCES historia_clinica(id_hc)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_evolucion_medico
+        FOREIGN KEY (id_medico)
+        REFERENCES medico(id_medico)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_evolucion_turno
+        FOREIGN KEY (id_turno)
+        REFERENCES turno(id_turno)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+);
+
+-- =====================================================
+-- MÓDULO: INSUMOS
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS insumo (
+    id_insumo INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion VARCHAR(255),
+
+    stock_minimo INT NOT NULL DEFAULT 0,
+    stock_actual INT NOT NULL DEFAULT 0,
+
+    proveedor VARCHAR(100),
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+
+    CONSTRAINT uq_insumo_nombre
+        UNIQUE (nombre)
+);
+
+-- =====================================================
+-- MÓDULO: LOTES DE INSUMOS
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS lote_insumo (
+    id_lote INT PRIMARY KEY AUTO_INCREMENT,
+    id_insumo INT NOT NULL,
+
+    nro_lote VARCHAR(50) NOT NULL,
+    fecha_vencimiento DATE,
+    cantidad_disponible INT NOT NULL DEFAULT 0,
+
+    CONSTRAINT uq_lote_insumo
+        UNIQUE (id_insumo, nro_lote),
+
+    CONSTRAINT fk_lote_insumo
+        FOREIGN KEY (id_insumo)
+        REFERENCES insumo(id_insumo)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
+
+-- =====================================================
+-- MÓDULO: MOVIMIENTOS DE STOCK
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS movimiento_stock (
+    id_movimiento INT PRIMARY KEY AUTO_INCREMENT,
+    id_insumo INT NOT NULL,
+    id_lote INT,
+
+    tipo ENUM(
+        'Entrada',
+        'Salida',
+        'Ajuste'
+    ) NOT NULL,
+
+    cantidad INT NOT NULL,
+    fecha_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    observacion VARCHAR(255),
+
+    CONSTRAINT fk_movimiento_insumo
+        FOREIGN KEY (id_insumo)
+        REFERENCES insumo(id_insumo)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_movimiento_lote
+        FOREIGN KEY (id_lote)
+        REFERENCES lote_insumo(id_lote)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+);
+
+-- =====================================================
+-- DATOS INICIALES
+-- INSERT IGNORE evita errores si estos datos ya existen.
+-- =====================================================
+
+INSERT IGNORE INTO rol (descripcion)
+VALUES
+    ('Médico'),
+    ('Paciente'),
+    ('Secretaria'),
+    ('Administrador');
+
+INSERT IGNORE INTO estado_turno (descripcion)
+VALUES
+    ('Asignado'),
+    ('Confirmado'),
+    ('Cancelado'),
+    ('Reprogramado'),
+    ('Atendido'),
+    ('Ausente');
+
+INSERT IGNORE INTO cobertura_medica (nombre, tipo)
+VALUES
+    ('OSDE', 'Prepaga'),
+    ('Swiss Medical', 'Prepaga'),
+    ('Galeno', 'Prepaga'),
+    ('PAMI', 'Obra Social'),
+    ('Particular', 'Particular');
+
+-- =====================================================
+-- CONSULTAS DE COMPROBACIÓN
+-- =====================================================
+
+SHOW TABLES;
+
+SELECT * FROM rol;
+SELECT * FROM estado_turno;
+SELECT * FROM cobertura_medica;
