@@ -31,6 +31,10 @@ function MainLayout() {
             Agenda
           </NavLink>
 
+          <NavLink className="sidebar-link" to="/recepcion">
+            Recepción
+          </NavLink>
+
           <NavLink className="sidebar-link" to="/historia-clinica">
             Historia clínica
           </NavLink>
