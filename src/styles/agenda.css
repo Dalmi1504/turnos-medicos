@@ -1,0 +1,329 @@
+/* ========================================
+   AGENDA
+======================================== */
+
+.agenda-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+
+/* ========================================
+   ENCABEZADO
+======================================== */
+
+.agenda-header h1 {
+  margin: 0;
+
+  color: #1e293b;
+
+  font-size: 38px;
+}
+
+.agenda-header p {
+  margin: 4px 0 0;
+
+  color: #64748b;
+}
+
+
+/* ========================================
+   FILTROS
+======================================== */
+
+.agenda-filtros {
+  display: flex;
+  align-items: flex-end;
+
+  gap: 16px;
+
+  padding: 20px;
+
+  background-color: white;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.agenda-filtro {
+  display: flex;
+  flex-direction: column;
+
+  gap: 6px;
+
+  min-width: 220px;
+}
+
+.agenda-filtro label {
+  color: #334155;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.agenda-filtro input,
+.agenda-filtro select {
+  padding: 11px 12px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+
+  background-color: white;
+
+  color: #334155;
+
+  font-family: inherit;
+  font-size: 15px;
+
+  outline: none;
+}
+
+.agenda-filtro input:focus,
+.agenda-filtro select:focus {
+  border-color: #0ea5e9;
+
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.08);
+}
+
+
+/* ========================================
+   FECHA SELECCIONADA
+======================================== */
+
+.agenda-fecha-actual {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  color: #64748b;
+}
+
+.agenda-fecha-actual span {
+  font-size: 14px;
+}
+
+.agenda-fecha-actual strong {
+  color: #1e293b;
+
+  font-size: 16px;
+}
+
+.agenda-fecha-actual small {
+  margin-left: 6px;
+
+  padding: 5px 9px;
+
+  background-color: #e0f2fe;
+
+  color: #0369a1;
+
+  border-radius: 999px;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+
+/* ========================================
+   MÉDICOS
+======================================== */
+
+.agenda-medicos {
+  display: flex;
+  flex-direction: column;
+
+  gap: 20px;
+}
+
+.agenda-medico-card {
+  overflow: hidden;
+
+  background-color: white;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.agenda-medico-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 18px 20px;
+
+  background-color: #f8fafc;
+
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.agenda-medico-header h2 {
+  margin: 0;
+
+  color: #1e293b;
+
+  font-size: 19px;
+}
+
+.agenda-medico-header span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #64748b;
+
+  font-size: 13px;
+}
+
+
+/* ========================================
+   TABLA
+======================================== */
+
+.agenda-table-container {
+  width: 100%;
+
+  overflow-x: auto;
+}
+
+.agenda-table {
+  width: 100%;
+
+  border-collapse: collapse;
+}
+
+.agenda-table th,
+.agenda-table td {
+  padding: 16px 20px;
+
+  text-align: left;
+
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.agenda-table th {
+  color: #475569;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.agenda-table td {
+  color: #475569;
+
+  font-size: 14px;
+}
+
+.agenda-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.agenda-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.agenda-hora {
+  color: #0284c7;
+
+  font-size: 15px;
+}
+
+
+/* ========================================
+   ESTADOS
+======================================== */
+
+.agenda-estado {
+  display: inline-block;
+
+  padding: 6px 10px;
+
+  border-radius: 999px;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.agenda-estado-asignado {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.agenda-estado-atendido {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.agenda-estado-cancelado {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.agenda-estado-ausente {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+
+/* ========================================
+   AGENDA VACÍA
+======================================== */
+
+.agenda-vacia {
+  padding: 60px 20px;
+
+  text-align: center;
+
+  background-color: white;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.agenda-vacia-icono {
+  margin-bottom: 12px;
+
+  font-size: 34px;
+}
+
+.agenda-vacia h2 {
+  margin: 0;
+
+  color: #334155;
+
+  font-size: 19px;
+}
+
+.agenda-vacia p {
+  margin: 7px 0 0;
+
+  color: #64748b;
+
+  font-size: 14px;
+}
+
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
+@media (max-width: 768px) {
+  .agenda-header h1 {
+    font-size: 32px;
+  }
+
+  .agenda-filtros {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .agenda-filtro {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .agenda-fecha-actual {
+    flex-wrap: wrap;
+  }
+}

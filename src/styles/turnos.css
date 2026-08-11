@@ -1,8 +1,17 @@
+/* ========================================
+   PÁGINA DE TURNOS
+======================================== */
+
 .turnos-page {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
+
+
+/* ========================================
+   ENCABEZADO
+======================================== */
 
 .turnos-header {
   display: flex;
@@ -21,14 +30,26 @@
   color: #64748b;
 }
 
+
+/* ========================================
+   BOTONES
+======================================== */
+
 .turnos-btn-primary {
   background-color: #0ea5e9;
   color: white;
+
   border: none;
   border-radius: 10px;
+
   padding: 12px 18px;
+
   font-size: 16px;
+  font-weight: 500;
+
   cursor: pointer;
+
+  transition: background-color 0.2s ease;
 }
 
 .turnos-btn-primary:hover {
@@ -38,17 +59,37 @@
 .turnos-btn-secondary {
   background-color: white;
   color: #475569;
+
   border: 1px solid #cbd5e1;
   border-radius: 10px;
+
   padding: 12px 18px;
+
   font-size: 16px;
+
   cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
+
+.turnos-btn-secondary:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+}
+
+
+/* ========================================
+   FORMULARIO DE TURNO
+======================================== */
 
 .turno-form {
   background-color: white;
+
   border: 1px solid #e2e8f0;
   border-radius: 12px;
+
   padding: 24px;
 }
 
@@ -56,6 +97,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+
   margin-bottom: 20px;
 }
 
@@ -66,20 +108,32 @@
 .turno-btn-cerrar {
   border: none;
   background: none;
+
   color: #64748b;
+
   font-size: 28px;
+
   cursor: pointer;
+
+  padding: 0;
+}
+
+.turno-btn-cerrar:hover {
+  color: #0f172a;
 }
 
 .turno-form-grid {
   display: grid;
+
   grid-template-columns: repeat(2, 1fr);
+
   gap: 18px;
 }
 
 .turno-form-group {
   display: flex;
   flex-direction: column;
+
   gap: 6px;
 }
 
@@ -91,17 +145,29 @@
 .turno-form-group input,
 .turno-form-group select {
   padding: 11px 12px;
+
   border: 1px solid #cbd5e1;
   border-radius: 8px;
+
   background-color: white;
+
+  font-family: inherit;
   font-size: 15px;
 }
 
 .turno-form-group input:focus,
 .turno-form-group select:focus {
   outline: none;
+
   border-color: #0ea5e9;
+
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.08);
 }
+
+
+/* ========================================
+   ERRORES
+======================================== */
 
 .turno-error {
   color: #dc2626;
@@ -110,18 +176,28 @@
 
 .turno-error-general {
   margin-top: 18px;
+
   padding: 12px;
+
   color: #b91c1c;
   background-color: #fef2f2;
+
   border-radius: 8px;
 }
 
 .turno-form-actions {
   display: flex;
   justify-content: flex-end;
+
   gap: 12px;
+
   margin-top: 24px;
 }
+
+
+/* ========================================
+   BUSCADOR
+======================================== */
 
 .turnos-search-container {
   width: 100%;
@@ -130,41 +206,70 @@
 .turnos-search {
   width: 100%;
   max-width: 600px;
+
   box-sizing: border-box;
+
   padding: 12px 14px;
+
   border: 1px solid #cbd5e1;
   border-radius: 10px;
+
+  font-family: inherit;
   font-size: 16px;
+
   outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .turnos-search:focus {
   border-color: #0ea5e9;
+
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.08);
 }
+
+
+/* ========================================
+   TABLA DE TURNOS
+======================================== */
 
 .turnos-table-container {
   width: 100%;
+
   overflow-x: auto;
+
+  border-radius: 12px;
 }
 
 .turnos-table {
   width: 100%;
+
   border-collapse: collapse;
+
   background-color: white;
+
   border-radius: 12px;
+
   overflow: hidden;
 }
 
 .turnos-table th,
 .turnos-table td {
   padding: 16px;
+
   text-align: left;
+
   border-bottom: 1px solid #e2e8f0;
 }
 
 .turnos-table th {
   background-color: #f8fafc;
+
   color: #334155;
+
+  font-weight: 600;
 }
 
 .turnos-table td {
@@ -175,26 +280,291 @@
   border-bottom: none;
 }
 
+.turnos-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+
+/* ========================================
+   ACCIONES DE LA TABLA
+======================================== */
+
 .turno-btn-action {
   border: none;
   background: none;
+
   color: #0284c7;
+
   cursor: pointer;
+
   margin-right: 10px;
+
   padding: 0;
+
+  font-family: inherit;
+  font-size: 14px;
 }
 
 .turno-btn-action:hover {
   text-decoration: underline;
 }
 
+
+/* ========================================
+   FONDO DEL MODAL
+======================================== */
+
+.turno-modal-overlay {
+  position: fixed;
+
+  inset: 0;
+
+  background-color: rgba(15, 23, 42, 0.45);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 20px;
+
+  box-sizing: border-box;
+
+  z-index: 1000;
+}
+
+
+/* ========================================
+   MODAL DETALLE DEL TURNO
+======================================== */
+
+.turno-modal {
+  width: 100%;
+  max-width: 650px;
+
+  max-height: 90vh;
+
+  overflow-y: auto;
+
+  box-sizing: border-box;
+
+  background-color: white;
+
+  border-radius: 16px;
+
+  padding: 24px;
+
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+}
+
+
+/* ========================================
+   ENCABEZADO DEL MODAL
+======================================== */
+
+.turno-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  gap: 20px;
+
+  margin-bottom: 24px;
+}
+
+.turno-modal-header h2 {
+  margin: 0;
+
+  color: #1e293b;
+
+  font-size: 24px;
+}
+
+.turno-modal-header p {
+  margin: 5px 0 0;
+
+  color: #64748b;
+}
+
+
+/* ========================================
+   DETALLE DEL TURNO
+======================================== */
+
+.turno-detalle-grid {
+  display: grid;
+
+  grid-template-columns: repeat(2, 1fr);
+
+  gap: 16px;
+}
+
+.turno-detalle-item {
+  display: flex;
+  flex-direction: column;
+
+  gap: 5px;
+
+  padding: 14px;
+
+  background-color: #f8fafc;
+
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+}
+
+.turno-detalle-item span {
+  color: #64748b;
+
+  font-size: 13px;
+}
+
+.turno-detalle-item strong {
+  color: #1e293b;
+
+  font-size: 15px;
+}
+
+
+/* ========================================
+   OBSERVACIONES DEL TURNO
+======================================== */
+
+.turno-observaciones {
+  display: flex;
+  flex-direction: column;
+
+  gap: 10px;
+
+  margin-top: 24px;
+
+  padding-top: 20px;
+
+  border-top: 1px solid #e2e8f0;
+}
+
+.turno-observaciones label {
+  display: block;
+
+  margin: 0;
+
+  color: #1e293b;
+
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.turno-observaciones-ayuda {
+  margin: -4px 0 2px;
+
+  color: #64748b;
+
+  font-size: 13px;
+}
+
+.turno-observaciones textarea {
+  width: 100%;
+  min-height: 110px;
+
+  box-sizing: border-box;
+
+  padding: 14px 16px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+
+  background-color: #ffffff;
+
+  color: #1e293b;
+
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.5;
+
+  resize: vertical;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.turno-observaciones textarea::placeholder {
+  color: #94a3b8;
+}
+
+.turno-observaciones textarea:focus {
+  outline: none;
+
+  border-color: #0ea5e9;
+
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.turno-observaciones-actions {
+  display: flex;
+  justify-content: flex-end;
+
+  margin-top: 4px;
+}
+
+
+/* ========================================
+   BOTONES INFERIORES DEL MODAL
+======================================== */
+
+.turno-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+
+  gap: 12px;
+
+  margin-top: 24px;
+
+  padding-top: 20px;
+
+  border-top: 1px solid #e2e8f0;
+}
+
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
 @media (max-width: 768px) {
-  .turno-form-grid {
-    grid-template-columns: 1fr;
-  }
 
   .turnos-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .turnos-header h1 {
+    font-size: 32px;
+  }
+
+  .turno-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .turno-detalle-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .turno-modal {
+    padding: 20px;
+  }
+
+  .turno-observaciones-actions {
+    justify-content: stretch;
+  }
+
+  .turno-observaciones-actions .turnos-btn-primary {
+    width: 100%;
+  }
+
+  .turno-modal-actions {
+    flex-direction: column;
+  }
+
+  .turno-modal-actions button {
+    width: 100%;
   }
 }
