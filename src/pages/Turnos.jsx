@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "../styles/turnos.css";
 
 function Turnos() {
@@ -9,64 +9,20 @@ function Turnos() {
   const [turnoSeleccionado, setTurnoSeleccionado] = useState(null);
   const [observacionTemporal, setObservacionTemporal] = useState("");
 
-  const [turnos, setTurnos] = useState([
-    {
-      id: 1,
-      paciente: "María González",
-      medico: "Dr. Juan Pérez",
-      tipoTurno: "Primera consulta",
-      fecha: "2026-08-12",
-      hora: "09:00",
-      consultorio: "Consultorio 1",
-      estado: "Asignado",
-      observaciones: "Recordar pedir estudios anteriores.",
-    },
-    {
-      id: 2,
-      paciente: "Carlos Pérez",
-      medico: "Dra. Laura Gómez",
-      tipoTurno: "Postoperatorio",
-      fecha: "2026-08-12",
-      hora: "10:30",
-      consultorio: "Consultorio 2",
-      estado: "Asignado",
-      observaciones: "",
-    },
-    {
-      id: 3,
-      paciente: "Lucía Fernández",
-      medico: "Dr. Juan Pérez",
-      tipoTurno: "Consulta",
-      fecha: "2026-08-13",
-      hora: "11:00",
-      consultorio: "Consultorio 1",
-      estado: "Cancelado",
-      observaciones: "",
-    },
-  ]);
+  const [turnos, setTurnos] = useState([]);
+  const [pacientes, setPacientes] = useState([]);
+  const [medicos, setMedicos] = useState([]);
+  const [estados, setEstados] = useState([]);
 
   const [nuevoTurno, setNuevoTurno] = useState({
-    paciente: "",
-    medico: "",
-    tipoTurno: "",
+    id_paciente: "",
+    id_medico: "",
+    motivo_consulta: "",
     fecha: "",
     hora: "",
-    consultorio: "",
-    estado: "Asignado",
+    estado: "",
     observaciones: "",
   });
-
-  const pacientes = [
-    "María González",
-    "Carlos Pérez",
-    "Lucía Fernández",
-  ];
-
-  const medicos = [
-    "Dr. Juan Pérez",
-    "Dra. Laura Gómez",
-    "Dr. Martín Rodríguez",
-  ];
 
   const tiposTurno = [
     "Primera consulta",
@@ -75,14 +31,90 @@ function Turnos() {
     "Postoperatorio",
   ];
 
-  const consultorios = [
-    "Consultorio 1",
-    "Consultorio 2",
-    "Consultorio 3",
-  ];
+  const cargarTurnos = async () => {
+    try {
+      const respuesta = await fetch(
+        "http://127.0.0.1:8000/turnos"
+      );
+
+      if (!respuesta.ok) {
+        throw new Error("No se pudieron obtener los turnos.");
+      }
+
+      const datos = await respuesta.json();
+      setTurnos(datos);
+    } catch (error) {
+      console.error("Error al obtener turnos:", error);
+    }
+  };
+
+  const cargarPacientes = async () => {
+    try {
+      const respuesta = await fetch(
+        "http://127.0.0.1:8000/pacientes"
+      );
+
+      if (!respuesta.ok) {
+        throw new Error("No se pudieron obtener los pacientes.");
+      }
+
+      const datos = await respuesta.json();
+
+      const pacientesActivos = datos.filter(
+        (paciente) => paciente.activo
+      );
+
+      setPacientes(pacientesActivos);
+    } catch (error) {
+      console.error("Error al obtener pacientes:", error);
+    }
+  };
+
+  const cargarMedicos = async () => {
+    try {
+      const respuesta = await fetch(
+        "http://127.0.0.1:8000/medicos"
+      );
+
+      if (!respuesta.ok) {
+        throw new Error("No se pudieron obtener los médicos.");
+      }
+
+      const datos = await respuesta.json();
+      setMedicos(datos);
+    } catch (error) {
+      console.error("Error al obtener médicos:", error);
+    }
+  };
+
+  const cargarEstados = async () => {
+    try {
+      const respuesta = await fetch(
+        "http://127.0.0.1:8000/estados-turno"
+      );
+
+      if (!respuesta.ok) {
+        throw new Error(
+          "No se pudieron obtener los estados de turno."
+        );
+      }
+
+      const datos = await respuesta.json();
+      setEstados(datos);
+    } catch (error) {
+      console.error("Error al obtener estados:", error);
+    }
+  };
+
+  useEffect(() => {
+    cargarTurnos();
+    cargarPacientes();
+    cargarMedicos();
+    cargarEstados();
+  }, []);
 
   const normalizarTexto = (texto) => {
-    return texto
+    return String(texto || "")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase();
@@ -94,7 +126,7 @@ function Turnos() {
     return (
       normalizarTexto(turno.paciente).includes(textoBusqueda) ||
       normalizarTexto(turno.medico).includes(textoBusqueda) ||
-      normalizarTexto(turno.tipoTurno).includes(textoBusqueda) ||
+      normalizarTexto(turno.motivo_consulta).includes(textoBusqueda) ||
       normalizarTexto(turno.estado).includes(textoBusqueda)
     );
   });
@@ -117,16 +149,17 @@ function Turnos() {
   const validarFormulario = () => {
     const nuevosErrores = {};
 
-    if (!nuevoTurno.paciente) {
-      nuevosErrores.paciente = "Seleccioná un paciente.";
+    if (!nuevoTurno.id_paciente) {
+      nuevosErrores.id_paciente = "Seleccioná un paciente.";
     }
 
-    if (!nuevoTurno.medico) {
-      nuevosErrores.medico = "Seleccioná un médico.";
+    if (!nuevoTurno.id_medico) {
+      nuevosErrores.id_medico = "Seleccioná un médico.";
     }
 
-    if (!nuevoTurno.tipoTurno) {
-      nuevosErrores.tipoTurno = "Seleccioná un tipo de turno.";
+    if (!nuevoTurno.motivo_consulta) {
+      nuevosErrores.motivo_consulta =
+        "Seleccioná un tipo de turno.";
     }
 
     if (!nuevoTurno.fecha) {
@@ -134,39 +167,32 @@ function Turnos() {
     }
 
     if (!nuevoTurno.hora) {
-      nuevosErrores.hora = "Seleccioná un horario.";
+      nuevosErrores.hora = "Ingresá un horario.";
+    } else {
+      const formatoHora = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+      if (!formatoHora.test(nuevoTurno.hora)) {
+        nuevosErrores.hora =
+          "Ingresá la hora con formato HH:MM. Ej: 14:30.";
+      }
     }
 
-    if (!nuevoTurno.consultorio) {
-      nuevosErrores.consultorio = "Seleccioná un consultorio.";
+    if (!nuevoTurno.estado) {
+      nuevosErrores.estado = "Seleccioná un estado.";
     }
 
     const medicoOcupado = turnos.some(
       (turno) =>
-        turno.id !== idEditando &&
-        turno.medico === nuevoTurno.medico &&
+        turno.id_turno !== idEditando &&
+        Number(turno.id_medico) === Number(nuevoTurno.id_medico) &&
         turno.fecha === nuevoTurno.fecha &&
-        turno.hora === nuevoTurno.hora &&
+        String(turno.hora).slice(0, 5) === nuevoTurno.hora &&
         turno.estado !== "Cancelado"
     );
 
     if (medicoOcupado) {
       nuevosErrores.turno =
         "El médico ya tiene un turno asignado en esa fecha y hora.";
-    }
-
-    const consultorioOcupado = turnos.some(
-      (turno) =>
-        turno.id !== idEditando &&
-        turno.consultorio === nuevoTurno.consultorio &&
-        turno.fecha === nuevoTurno.fecha &&
-        turno.hora === nuevoTurno.hora &&
-        turno.estado !== "Cancelado"
-    );
-
-    if (consultorioOcupado) {
-      nuevosErrores.consultorio =
-        "El consultorio ya está ocupado en esa fecha y hora.";
     }
 
     setErrores(nuevosErrores);
@@ -178,13 +204,15 @@ function Turnos() {
     setIdEditando(null);
 
     setNuevoTurno({
-      paciente: "",
-      medico: "",
-      tipoTurno: "",
+      id_paciente: "",
+      id_medico: "",
+      motivo_consulta: "",
       fecha: "",
       hora: "",
-      consultorio: "",
-      estado: "Asignado",
+      estado:
+        estados.length > 0
+          ? estados[0].descripcion
+          : "",
       observaciones: "",
     });
 
@@ -193,16 +221,15 @@ function Turnos() {
   };
 
   const editarTurno = (turno) => {
-    setIdEditando(turno.id);
+    setIdEditando(turno.id_turno);
 
     setNuevoTurno({
-      paciente: turno.paciente,
-      medico: turno.medico,
-      tipoTurno: turno.tipoTurno,
-      fecha: turno.fecha,
-      hora: turno.hora,
-      consultorio: turno.consultorio,
-      estado: turno.estado,
+      id_paciente: String(turno.id_paciente),
+      id_medico: String(turno.id_medico),
+      motivo_consulta: turno.motivo_consulta || "",
+      fecha: turno.fecha || "",
+      hora: String(turno.hora || "").slice(0, 5),
+      estado: turno.estado || "",
       observaciones: turno.observaciones || "",
     });
 
@@ -210,34 +237,90 @@ function Turnos() {
     setMostrarFormulario(true);
   };
 
-  const guardarTurno = (evento) => {
+  const cerrarFormulario = () => {
+    setMostrarFormulario(false);
+    setIdEditando(null);
+
+    setNuevoTurno({
+      id_paciente: "",
+      id_medico: "",
+      motivo_consulta: "",
+      fecha: "",
+      hora: "",
+      estado: "",
+      observaciones: "",
+    });
+
+    setErrores({});
+  };
+
+  const guardarTurno = async (evento) => {
     evento.preventDefault();
 
     if (!validarFormulario()) {
       return;
     }
 
-    if (idEditando) {
-      setTurnos(
-        turnos.map((turno) =>
-          turno.id === idEditando
-            ? { ...turno, ...nuevoTurno }
-            : turno
-        )
-      );
-    } else {
-      const turnoCreado = {
-        id: Date.now(),
-        ...nuevoTurno,
-      };
+    const turnoParaEnviar = {
+      fecha: nuevoTurno.fecha,
+      hora: nuevoTurno.hora,
+      motivo_consulta: nuevoTurno.motivo_consulta,
+      id_paciente: Number(nuevoTurno.id_paciente),
+      id_medico: Number(nuevoTurno.id_medico),
+      estado: nuevoTurno.estado,
+      observaciones:
+        nuevoTurno.observaciones || null,
+    };
 
-      setTurnos([...turnos, turnoCreado]);
+    try {
+      let respuesta;
+
+      if (idEditando) {
+        respuesta = await fetch(
+          `http://127.0.0.1:8000/turnos/${idEditando}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(turnoParaEnviar),
+          }
+        );
+      } else {
+        respuesta = await fetch(
+          "http://127.0.0.1:8000/turnos",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(turnoParaEnviar),
+          }
+        );
+      }
+
+      if (!respuesta.ok) {
+        const error = await respuesta.json();
+
+        throw new Error(
+          error.detail ||
+            "No se pudo guardar el turno."
+        );
+      }
+
+      await cargarTurnos();
+      cerrarFormulario();
+    } catch (error) {
+      console.error("Error al guardar turno:", error);
+
+      setErrores({
+        ...errores,
+        turno: error.message,
+      });
     }
-
-    cerrarFormulario();
   };
 
-  const cancelarTurno = (id) => {
+  const cancelarTurno = async (turno) => {
     const confirmar = window.confirm(
       "¿Querés cancelar este turno?"
     );
@@ -246,37 +329,49 @@ function Turnos() {
       return;
     }
 
-    setTurnos(
-      turnos.map((turno) =>
-        turno.id === id
-          ? { ...turno, estado: "Cancelado" }
-          : turno
-      )
-    );
+    const turnoParaEnviar = {
+      fecha: turno.fecha,
+      hora: String(turno.hora).slice(0, 5),
+      motivo_consulta: turno.motivo_consulta,
+      id_paciente: Number(turno.id_paciente),
+      id_medico: Number(turno.id_medico),
+      estado: "Cancelado",
+      observaciones: turno.observaciones || null,
+    };
+
+    try {
+      const respuesta = await fetch(
+        `http://127.0.0.1:8000/turnos/${turno.id_turno}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(turnoParaEnviar),
+        }
+      );
+
+      if (!respuesta.ok) {
+        const error = await respuesta.json();
+
+        throw new Error(
+          error.detail ||
+            "No se pudo cancelar el turno."
+        );
+      }
+
+      await cargarTurnos();
+    } catch (error) {
+      console.error("Error al cancelar turno:", error);
+      alert(error.message);
+    }
   };
 
   const verTurno = (turno) => {
     setTurnoSeleccionado(turno);
-    setObservacionTemporal(turno.observaciones || "");
-  };
-
-  const guardarObservacion = () => {
-    if (!turnoSeleccionado) {
-      return;
-    }
-
-    const turnosActualizados = turnos.map((turno) =>
-      turno.id === turnoSeleccionado.id
-        ? { ...turno, observaciones: observacionTemporal }
-        : turno
+    setObservacionTemporal(
+      turno.observaciones || ""
     );
-
-    setTurnos(turnosActualizados);
-
-    setTurnoSeleccionado({
-      ...turnoSeleccionado,
-      observaciones: observacionTemporal,
-    });
   };
 
   const cerrarDetalle = () => {
@@ -284,22 +379,66 @@ function Turnos() {
     setObservacionTemporal("");
   };
 
-  const cerrarFormulario = () => {
-    setMostrarFormulario(false);
-    setIdEditando(null);
+  const guardarObservacion = async () => {
+    if (!turnoSeleccionado) {
+      return;
+    }
 
-    setNuevoTurno({
-      paciente: "",
-      medico: "",
-      tipoTurno: "",
-      fecha: "",
-      hora: "",
-      consultorio: "",
-      estado: "Asignado",
-      observaciones: "",
-    });
+    const turnoParaEnviar = {
+      fecha: turnoSeleccionado.fecha,
+      hora: String(
+        turnoSeleccionado.hora
+      ).slice(0, 5),
+      motivo_consulta:
+        turnoSeleccionado.motivo_consulta,
+      id_paciente: Number(
+        turnoSeleccionado.id_paciente
+      ),
+      id_medico: Number(
+        turnoSeleccionado.id_medico
+      ),
+      estado: turnoSeleccionado.estado,
+      observaciones:
+        observacionTemporal || null,
+    };
 
-    setErrores({});
+    try {
+      const respuesta = await fetch(
+        `http://127.0.0.1:8000/turnos/${turnoSeleccionado.id_turno}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(turnoParaEnviar),
+        }
+      );
+
+      if (!respuesta.ok) {
+        const error = await respuesta.json();
+
+        throw new Error(
+          error.detail ||
+            "No se pudo guardar la observación."
+        );
+      }
+
+      await cargarTurnos();
+
+      setTurnoSeleccionado({
+        ...turnoSeleccionado,
+        observaciones: observacionTemporal,
+      });
+
+      alert("Observación guardada.");
+    } catch (error) {
+      console.error(
+        "Error al guardar observación:",
+        error
+      );
+
+      alert(error.message);
+    }
   };
 
   return (
@@ -320,10 +459,15 @@ function Turnos() {
       </div>
 
       {mostrarFormulario && (
-        <form className="turno-form" onSubmit={guardarTurno}>
+        <form
+          className="turno-form"
+          onSubmit={guardarTurno}
+        >
           <div className="turno-form-header">
             <h2>
-              {idEditando ? "Editar turno" : "Nuevo turno"}
+              {idEditando
+                ? "Editar turno"
+                : "Nuevo turno"}
             </h2>
 
             <button
@@ -337,107 +481,107 @@ function Turnos() {
 
           <div className="turno-form-grid">
             <div className="turno-form-group">
-              <label htmlFor="paciente">Paciente</label>
+              <label htmlFor="id_paciente">
+                Paciente
+              </label>
 
               <select
-                id="paciente"
-                name="paciente"
-                value={nuevoTurno.paciente}
+                id="id_paciente"
+                name="id_paciente"
+                value={nuevoTurno.id_paciente}
                 onChange={manejarCambio}
               >
-                <option value="">Seleccionar paciente</option>
+                <option value="">
+                  Seleccionar paciente
+                </option>
 
                 {pacientes.map((paciente) => (
-                  <option key={paciente} value={paciente}>
-                    {paciente}
+                  <option
+                    key={paciente.id_paciente}
+                    value={paciente.id_paciente}
+                  >
+                    {paciente.nombre}{" "}
+                    {paciente.apellido}
                   </option>
                 ))}
               </select>
 
-              {errores.paciente && (
+              {errores.id_paciente && (
                 <span className="turno-error">
-                  {errores.paciente}
+                  {errores.id_paciente}
                 </span>
               )}
             </div>
 
             <div className="turno-form-group">
-              <label htmlFor="medico">Médico</label>
+              <label htmlFor="id_medico">
+                Médico
+              </label>
 
               <select
-                id="medico"
-                name="medico"
-                value={nuevoTurno.medico}
+                id="id_medico"
+                name="id_medico"
+                value={nuevoTurno.id_medico}
                 onChange={manejarCambio}
               >
-                <option value="">Seleccionar médico</option>
+                <option value="">
+                  Seleccionar médico
+                </option>
 
                 {medicos.map((medico) => (
-                  <option key={medico} value={medico}>
-                    {medico}
+                  <option
+                    key={medico.id_medico}
+                    value={medico.id_medico}
+                  >
+                    {medico.nombre}{" "}
+                    {medico.apellido}
                   </option>
                 ))}
               </select>
 
-              {errores.medico && (
+              {errores.id_medico && (
                 <span className="turno-error">
-                  {errores.medico}
+                  {errores.id_medico}
                 </span>
               )}
             </div>
 
             <div className="turno-form-group">
-              <label htmlFor="tipoTurno">Tipo de turno</label>
+              <label htmlFor="motivo_consulta">
+                Tipo de turno
+              </label>
 
               <select
-                id="tipoTurno"
-                name="tipoTurno"
-                value={nuevoTurno.tipoTurno}
+                id="motivo_consulta"
+                name="motivo_consulta"
+                value={nuevoTurno.motivo_consulta}
                 onChange={manejarCambio}
               >
-                <option value="">Seleccionar tipo</option>
+                <option value="">
+                  Seleccionar tipo
+                </option>
 
                 {tiposTurno.map((tipo) => (
-                  <option key={tipo} value={tipo}>
+                  <option
+                    key={tipo}
+                    value={tipo}
+                  >
                     {tipo}
                   </option>
                 ))}
               </select>
 
-              {errores.tipoTurno && (
+              {errores.motivo_consulta && (
                 <span className="turno-error">
-                  {errores.tipoTurno}
+                  {errores.motivo_consulta}
                 </span>
               )}
             </div>
 
             <div className="turno-form-group">
-              <label htmlFor="consultorio">Consultorio</label>
-
-              <select
-                id="consultorio"
-                name="consultorio"
-                value={nuevoTurno.consultorio}
-                onChange={manejarCambio}
-              >
-                <option value="">Seleccionar consultorio</option>
-
-                {consultorios.map((consultorio) => (
-                  <option key={consultorio} value={consultorio}>
-                    {consultorio}
-                  </option>
-                ))}
-              </select>
-
-              {errores.consultorio && (
-                <span className="turno-error">
-                  {errores.consultorio}
-                </span>
-              )}
-            </div>
-
-            <div className="turno-form-group">
-              <label htmlFor="fecha">Fecha</label>
+              <label htmlFor="fecha">
+                Fecha
+              </label>
 
               <input
                 id="fecha"
@@ -455,12 +599,15 @@ function Turnos() {
             </div>
 
             <div className="turno-form-group">
-              <label htmlFor="hora">Hora</label>
+              <label htmlFor="hora">
+                Hora
+              </label>
 
               <input
                 id="hora"
                 name="hora"
-                type="time"
+                type="text"
+                placeholder="Ej: 14:30"
                 value={nuevoTurno.hora}
                 onChange={manejarCambio}
               />
@@ -473,7 +620,9 @@ function Turnos() {
             </div>
 
             <div className="turno-form-group">
-              <label htmlFor="estado">Estado</label>
+              <label htmlFor="estado">
+                Estado
+              </label>
 
               <select
                 id="estado"
@@ -481,12 +630,41 @@ function Turnos() {
                 value={nuevoTurno.estado}
                 onChange={manejarCambio}
               >
-                <option value="Asignado">Asignado</option>
-                <option value="Atendido">Atendido</option>
-                <option value="Ausente">Ausente</option>
-                <option value="Cancelado">Cancelado</option>
+                <option value="">
+                  Seleccionar estado
+                </option>
+
+                {estados.map((estado) => (
+                  <option
+                    key={estado.id_estado}
+                    value={estado.descripcion}
+                  >
+                    {estado.descripcion}
+                  </option>
+                ))}
               </select>
+
+              {errores.estado && (
+                <span className="turno-error">
+                  {errores.estado}
+                </span>
+              )}
             </div>
+          </div>
+
+          <div className="turno-form-group">
+            <label htmlFor="observaciones-form">
+              Observaciones
+            </label>
+
+            <textarea
+              id="observaciones-form"
+              name="observaciones"
+              rows="3"
+              value={nuevoTurno.observaciones}
+              onChange={manejarCambio}
+              placeholder="Ej: Recordar solicitar estudios anteriores..."
+            />
           </div>
 
           {errores.turno && (
@@ -537,7 +715,6 @@ function Turnos() {
               <th>Tipo</th>
               <th>Fecha</th>
               <th>Hora</th>
-              <th>Consultorio</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
@@ -545,20 +722,23 @@ function Turnos() {
 
           <tbody>
             {turnosFiltrados.map((turno) => (
-              <tr key={turno.id}>
+              <tr key={turno.id_turno}>
                 <td>{turno.paciente}</td>
                 <td>{turno.medico}</td>
-                <td>{turno.tipoTurno}</td>
+                <td>{turno.motivo_consulta}</td>
                 <td>{turno.fecha}</td>
-                <td>{turno.hora}</td>
-                <td>{turno.consultorio}</td>
+                <td>
+                  {String(turno.hora).slice(0, 5)}
+                </td>
                 <td>{turno.estado}</td>
 
                 <td>
                   <button
                     type="button"
                     className="turno-btn-action"
-                    onClick={() => verTurno(turno)}
+                    onClick={() =>
+                      verTurno(turno)
+                    }
                   >
                     Ver
                   </button>
@@ -566,7 +746,9 @@ function Turnos() {
                   <button
                     type="button"
                     className="turno-btn-action"
-                    onClick={() => editarTurno(turno)}
+                    onClick={() =>
+                      editarTurno(turno)
+                    }
                   >
                     Editar
                   </button>
@@ -575,7 +757,9 @@ function Turnos() {
                     <button
                       type="button"
                       className="turno-btn-action"
-                      onClick={() => cancelarTurno(turno.id)}
+                      onClick={() =>
+                        cancelarTurno(turno)
+                      }
                     >
                       Cancelar
                     </button>
@@ -586,7 +770,7 @@ function Turnos() {
 
             {turnosFiltrados.length === 0 && (
               <tr>
-                <td colSpan="8">
+                <td colSpan="7">
                   No se encontraron turnos.
                 </td>
               </tr>
@@ -616,37 +800,46 @@ function Turnos() {
             <div className="turno-detalle-grid">
               <div className="turno-detalle-item">
                 <span>Paciente</span>
-                <strong>{turnoSeleccionado.paciente}</strong>
+                <strong>
+                  {turnoSeleccionado.paciente}
+                </strong>
               </div>
 
               <div className="turno-detalle-item">
                 <span>Médico</span>
-                <strong>{turnoSeleccionado.medico}</strong>
+                <strong>
+                  {turnoSeleccionado.medico}
+                </strong>
               </div>
 
               <div className="turno-detalle-item">
                 <span>Tipo de turno</span>
-                <strong>{turnoSeleccionado.tipoTurno}</strong>
+                <strong>
+                  {turnoSeleccionado.motivo_consulta}
+                </strong>
               </div>
 
               <div className="turno-detalle-item">
                 <span>Fecha</span>
-                <strong>{turnoSeleccionado.fecha}</strong>
+                <strong>
+                  {turnoSeleccionado.fecha}
+                </strong>
               </div>
 
               <div className="turno-detalle-item">
                 <span>Hora</span>
-                <strong>{turnoSeleccionado.hora}</strong>
-              </div>
-
-              <div className="turno-detalle-item">
-                <span>Consultorio</span>
-                <strong>{turnoSeleccionado.consultorio}</strong>
+                <strong>
+                  {String(
+                    turnoSeleccionado.hora
+                  ).slice(0, 5)}
+                </strong>
               </div>
 
               <div className="turno-detalle-item">
                 <span>Estado</span>
-                <strong>{turnoSeleccionado.estado}</strong>
+                <strong>
+                  {turnoSeleccionado.estado}
+                </strong>
               </div>
             </div>
 
@@ -660,7 +853,9 @@ function Turnos() {
                 rows="4"
                 value={observacionTemporal}
                 onChange={(evento) =>
-                  setObservacionTemporal(evento.target.value)
+                  setObservacionTemporal(
+                    evento.target.value
+                  )
                 }
                 placeholder="Ej: Recordar solicitar estudios anteriores..."
               />
