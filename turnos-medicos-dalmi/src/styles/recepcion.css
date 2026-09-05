@@ -1,0 +1,290 @@
+/* ========================================
+   RECEPCIÓN
+======================================== */
+
+.recepcion-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.recepcion-header h1 {
+  margin: 0;
+  font-size: 38px;
+  color: #1e293b;
+}
+
+.recepcion-header p {
+  margin: 4px 0 0;
+  color: #64748b;
+}
+
+
+/* ========================================
+   RESUMEN
+======================================== */
+
+.recepcion-resumen {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.recepcion-resumen-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 18px;
+
+  background-color: white;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.recepcion-resumen-card span {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.recepcion-resumen-card strong {
+  color: #1e293b;
+  font-size: 26px;
+}
+
+
+/* ========================================
+   BUSCADOR
+======================================== */
+
+.recepcion-search-container {
+  width: 100%;
+}
+
+.recepcion-search {
+  width: 100%;
+  max-width: 600px;
+
+  box-sizing: border-box;
+
+  padding: 12px 14px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+
+  font-family: inherit;
+  font-size: 16px;
+
+  outline: none;
+}
+
+.recepcion-search:focus {
+  border-color: #0ea5e9;
+
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.08);
+}
+
+
+/* ========================================
+   TABLA
+======================================== */
+
+.recepcion-table-container {
+  width: 100%;
+  overflow-x: auto;
+
+  border-radius: 12px;
+}
+
+.recepcion-table {
+  width: 100%;
+
+  border-collapse: collapse;
+
+  background-color: white;
+
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.recepcion-table th,
+.recepcion-table td {
+  padding: 16px;
+
+  text-align: left;
+
+  border-bottom: 1px solid #e2e8f0;
+
+  vertical-align: middle;
+}
+
+.recepcion-table th {
+  background-color: #f8fafc;
+
+  color: #334155;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.recepcion-table td {
+  color: #475569;
+}
+
+.recepcion-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.recepcion-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+
+/* ========================================
+   ESTADOS
+======================================== */
+
+.recepcion-estado {
+  display: inline-block;
+
+  padding: 6px 10px;
+
+  border-radius: 999px;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  white-space: nowrap;
+}
+
+.recepcion-estado-pendiente {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.recepcion-estado-en-espera {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.recepcion-estado-en-consulta {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.recepcion-estado-finalizado {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.recepcion-estado-ausente {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+
+/* ========================================
+   RELOJ DE ESPERA
+======================================== */
+
+.recepcion-reloj {
+  display: inline-block;
+
+  min-width: 90px;
+
+  font-family: monospace;
+  font-size: 14px;
+
+  color: #64748b;
+
+  white-space: nowrap;
+}
+
+.recepcion-reloj.activo {
+  color: #b45309;
+
+  font-weight: 700;
+}
+
+
+/* ========================================
+   ACCIONES
+======================================== */
+
+.recepcion-acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  white-space: nowrap;
+}
+
+.recepcion-btn-primary,
+.recepcion-btn-secondary {
+  border-radius: 8px;
+
+  padding: 8px 12px;
+
+  font-family: inherit;
+  font-size: 13px;
+
+  cursor: pointer;
+}
+
+.recepcion-btn-primary {
+  border: none;
+
+  background-color: #0ea5e9;
+  color: white;
+}
+
+.recepcion-btn-primary:hover {
+  background-color: #0284c7;
+}
+
+.recepcion-btn-secondary {
+  border: 1px solid #cbd5e1;
+
+  background-color: white;
+  color: #475569;
+}
+
+.recepcion-btn-secondary:hover {
+  background-color: #f8fafc;
+}
+
+.recepcion-sin-acciones {
+  color: #64748b;
+
+  font-size: 13px;
+}
+
+.recepcion-sin-resultados {
+  text-align: center !important;
+
+  color: #64748b !important;
+
+  padding: 30px !important;
+}
+
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
+@media (max-width: 1000px) {
+  .recepcion-resumen {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .recepcion-header h1 {
+    font-size: 32px;
+  }
+
+  .recepcion-resumen {
+    grid-template-columns: 1fr;
+  }
+}

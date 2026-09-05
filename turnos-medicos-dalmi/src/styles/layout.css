@@ -1,0 +1,96 @@
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 250px;
+  min-height: 100vh;
+  padding: 24px 18px;
+  background: #162433;
+  color: white;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-logo {
+  margin-bottom: 32px;
+}
+
+.sidebar-logo h1 {
+  font-size: 28px;
+  color: var(--color-primario);
+}
+
+.sidebar-logo p {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-link {
+  padding: 12px 14px;
+  border-radius: 8px;
+  color: #dbe5ef;
+  transition: background 0.2s ease;
+}
+
+.sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.sidebar-link.active {
+  background: var(--color-primario);
+  color: white;
+}
+
+.main-container {
+  flex: 1;
+  min-width: 0;
+}
+
+.header {
+  height: 72px;
+  padding: 0 28px;
+  background: var(--color-superficie);
+  border-bottom: 1px solid var(--color-borde);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-title h2 {
+  font-size: 20px;
+}
+
+.header-title p {
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--color-texto-secundario);
+}
+
+.header-user {
+  text-align: right;
+}
+
+.header-user strong,
+.header-user span {
+  display: block;
+}
+
+.header-user span {
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--color-texto-secundario);
+}
+
+.page-content {
+  padding: 28px;
+}
