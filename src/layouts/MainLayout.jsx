@@ -42,10 +42,6 @@ function MainLayout() {
           <NavLink className="sidebar-link" to="/coberturas">
             Coberturas
           </NavLink>
-
-          <NavLink className="sidebar-link" to="/usuarios">
-            Usuarios
-          </NavLink>
         </nav>
       </aside>
 

@@ -1,0 +1,279 @@
+.dashboard {
+  width: 100%;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  color: #17233c;
+  font-size: 30px;
+}
+
+/* Texto debajo de la bienvenida */
+.dashboard-subtitulo {
+  margin: 6px 0 2px;
+  color: #6f7888;
+  font-weight: 400;
+}
+
+.dashboard-fecha {
+  margin: 0;
+  color: #7b8496;
+  text-transform: capitalize;
+}
+
+/* =========================
+   TARJETAS
+========================= */
+
+.dashboard-resumen {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.dashboard-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid #eef1f5;
+}
+
+.dashboard-card span {
+  display: block;
+  color: #7c8495;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.dashboard-card strong {
+  font-size: 30px;
+  color: #17233c;
+}
+
+/* =========================
+   CONTENIDO
+========================= */
+
+.dashboard-contenido {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 20px;
+}
+
+.dashboard-panel {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 22px;
+  border: 1px solid #eef1f5;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+}
+
+.dashboard-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.dashboard-panel-header h2 {
+  margin: 0;
+  color: #17233c;
+  font-size: 19px;
+}
+
+.dashboard-panel-header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #8b93a4;
+}
+
+/* =========================
+   TURNOS
+========================= */
+
+.dashboard-turnos {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-turno {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 0;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.dashboard-turno:last-child {
+  border-bottom: none;
+}
+
+.dashboard-turno-hora {
+  color: #16a9c7;
+  font-weight: 700;
+}
+
+.dashboard-turno-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dashboard-turno-info strong {
+  color: #29344a;
+}
+
+.dashboard-turno-info span {
+  color: #7c8495;
+  font-size: 13px;
+}
+
+.dashboard-estado {
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  background: #eef2f5;
+  color: #596273;
+}
+
+.dashboard-estado.en-espera {
+  background: #fff4d7;
+  color: #9a6c00;
+}
+
+.dashboard-estado.en-consulta {
+  background: #e3f5ff;
+  color: #167aa5;
+}
+
+.dashboard-estado.finalizado {
+  background: #e7f8ed;
+  color: #27824b;
+}
+
+.dashboard-estado.ausente {
+  background: #fdecec;
+  color: #b74a4a;
+}
+
+/* =========================
+   TAREAS
+========================= */
+
+.dashboard-tarea-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.dashboard-tarea-form input {
+  flex: 1;
+  border: 1px solid #dfe4eb;
+  border-radius: 8px;
+  padding: 11px 12px;
+  outline: none;
+  font-family: inherit;
+}
+
+.dashboard-tarea-form input:focus {
+  border-color: #16a9c7;
+}
+
+.dashboard-tarea-form button {
+  border: none;
+  border-radius: 8px;
+  background: #16a9c7;
+  color: white;
+  padding: 0 16px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.dashboard-tareas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-tarea {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.dashboard-tarea label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #354057;
+  cursor: pointer;
+}
+
+.dashboard-tarea.completada span {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.dashboard-eliminar {
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 21px;
+  cursor: pointer;
+}
+
+.dashboard-eliminar:hover {
+  color: #d45858;
+}
+
+/* =========================
+   MENSAJE VACÍO
+========================= */
+
+.dashboard-vacio {
+  color: #8b93a4;
+  padding: 24px 4px;
+  text-align: center;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 1000px) {
+  .dashboard-resumen {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dashboard-contenido {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-resumen {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-turno {
+    grid-template-columns: 55px 1fr;
+  }
+
+  .dashboard-estado {
+    grid-column: 2;
+    width: fit-content;
+  }
+}

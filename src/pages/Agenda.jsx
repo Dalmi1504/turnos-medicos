@@ -1,71 +1,64 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "../styles/agenda.css";
 
 function Agenda() {
   const [fechaSeleccionada, setFechaSeleccionada] =
-    useState("2026-08-12");
+    useState("");
 
   const [medicoSeleccionado, setMedicoSeleccionado] =
     useState("Todos");
 
-  const turnos = [
-    {
-      id: 1,
-      paciente: "María González",
-      medico: "Dr. Juan Pérez",
-      tipoTurno: "Primera consulta",
-      fecha: "2026-08-12",
-      hora: "09:00",
-      consultorio: "Consultorio 1",
-      estado: "Asignado",
-    },
-    {
-      id: 2,
-      paciente: "Carlos Pérez",
-      medico: "Dra. Laura Gómez",
-      tipoTurno: "Postoperatorio",
-      fecha: "2026-08-12",
-      hora: "10:30",
-      consultorio: "Consultorio 2",
-      estado: "Asignado",
-    },
-    {
-      id: 3,
-      paciente: "Ana Martínez",
-      medico: "Dr. Juan Pérez",
-      tipoTurno: "Consulta",
-      fecha: "2026-08-12",
-      hora: "11:00",
-      consultorio: "Consultorio 1",
-      estado: "Atendido",
-    },
-    {
-      id: 4,
-      paciente: "Pedro López",
-      medico: "Dra. Laura Gómez",
-      tipoTurno: "Preoperatorio",
-      fecha: "2026-08-12",
-      hora: "12:00",
-      consultorio: "Consultorio 2",
-      estado: "Cancelado",
-    },
-    {
-      id: 5,
-      paciente: "Lucía Fernández",
-      medico: "Dr. Juan Pérez",
-      tipoTurno: "Consulta",
-      fecha: "2026-08-13",
-      hora: "11:00",
-      consultorio: "Consultorio 1",
-      estado: "Asignado",
-    },
+  const [turnos, setTurnos] = useState([]);
+
+  // =========================================================
+  // CARGAR TURNOS DESDE FASTAPI
+  // =========================================================
+
+  const cargarTurnos = async () => {
+    try {
+      const respuesta = await fetch(
+        "http://127.0.0.1:8000/turnos"
+      );
+
+      if (!respuesta.ok) {
+        throw new Error(
+          "No se pudieron obtener los turnos."
+        );
+      }
+
+      const datos = await respuesta.json();
+
+      setTurnos(datos);
+    } catch (error) {
+      console.error(
+        "Error al obtener los turnos:",
+        error
+      );
+    }
+  };
+
+  useEffect(() => {
+    cargarTurnos();
+  }, []);
+
+  // =========================================================
+  // MÉDICOS DISPONIBLES
+  // =========================================================
+
+  const medicos = [
+    ...new Set(
+      turnos.map((turno) => turno.medico)
+    ),
   ];
 
-  const medicos = [...new Set(turnos.map((turno) => turno.medico))];
+  // =========================================================
+  // FILTRAR TURNOS
+  // =========================================================
 
   const turnosDelDia = turnos
     .filter((turno) => {
       const coincideFecha =
+        !fechaSeleccionada ||
         turno.fecha === fechaSeleccionada;
 
       const coincideMedico =
@@ -74,65 +67,108 @@ function Agenda() {
 
       return coincideFecha && coincideMedico;
     })
-    .sort((a, b) => a.hora.localeCompare(b.hora));
+    .sort((a, b) =>
+      String(a.hora).localeCompare(
+        String(b.hora)
+      )
+    );
 
+  // Médicos que tienen turnos según los filtros
   const medicosConTurnos = [
-    ...new Set(turnosDelDia.map((turno) => turno.medico)),
+    ...new Set(
+      turnosDelDia.map(
+        (turno) => turno.medico
+      )
+    ),
   ];
 
+  // =========================================================
+  // CLASE PARA LOS ESTADOS
+  // =========================================================
+
   const obtenerClaseEstado = (estado) => {
-    return `agenda-estado agenda-estado-${estado.toLowerCase()}`;
+    const estadoNormalizado = String(
+      estado || ""
+    )
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+
+    return `agenda-estado agenda-estado-${estadoNormalizado}`;
   };
+
+  // =========================================================
+  // FORMATEAR FECHA
+  // =========================================================
 
   const formatearFecha = (fecha) => {
     if (!fecha) {
-      return "";
+      return "Todas";
     }
 
-    const [anio, mes, dia] = fecha.split("-");
+    const [anio, mes, dia] =
+      fecha.split("-");
 
     return `${dia}/${mes}/${anio}`;
   };
+
+  // =========================================================
+  // HTML
+  // =========================================================
 
   return (
     <section className="agenda-page">
       <div className="agenda-header">
         <div>
           <h1>Agenda</h1>
+
           <p>
-            Consulta de turnos programados por fecha y médico.
+            Consulta de turnos programados por
+            fecha y médico.
           </p>
         </div>
       </div>
 
       <div className="agenda-filtros">
         <div className="agenda-filtro">
-          <label htmlFor="fechaAgenda">Fecha</label>
+          <label htmlFor="fechaAgenda">
+            Fecha
+          </label>
 
           <input
             id="fechaAgenda"
             type="date"
             value={fechaSeleccionada}
             onChange={(evento) =>
-              setFechaSeleccionada(evento.target.value)
+              setFechaSeleccionada(
+                evento.target.value
+              )
             }
           />
         </div>
 
         <div className="agenda-filtro">
-          <label htmlFor="medicoAgenda">Médico</label>
+          <label htmlFor="medicoAgenda">
+            Médico
+          </label>
 
           <select
             id="medicoAgenda"
             value={medicoSeleccionado}
             onChange={(evento) =>
-              setMedicoSeleccionado(evento.target.value)
+              setMedicoSeleccionado(
+                evento.target.value
+              )
             }
           >
-            <option value="Todos">Todos los médicos</option>
+            <option value="Todos">
+              Todos los médicos
+            </option>
 
             {medicos.map((medico) => (
-              <option key={medico} value={medico}>
+              <option
+                key={medico}
+                value={medico}
+              >
                 {medico}
               </option>
             ))}
@@ -142,89 +178,126 @@ function Agenda() {
 
       <div className="agenda-fecha-actual">
         <span>Agenda del día</span>
-        <strong>{formatearFecha(fechaSeleccionada)}</strong>
+
+        <strong>
+          {formatearFecha(
+            fechaSeleccionada
+          )}
+        </strong>
 
         <small>
           {turnosDelDia.length}{" "}
-          {turnosDelDia.length === 1 ? "turno" : "turnos"}
+          {turnosDelDia.length === 1
+            ? "turno"
+            : "turnos"}
         </small>
       </div>
 
       {medicosConTurnos.length > 0 ? (
         <div className="agenda-medicos">
-          {medicosConTurnos.map((medico) => {
-            const turnosMedico = turnosDelDia.filter(
-              (turno) => turno.medico === medico
-            );
+          {medicosConTurnos.map(
+            (medico) => {
+              const turnosMedico =
+                turnosDelDia.filter(
+                  (turno) =>
+                    turno.medico === medico
+                );
 
-            return (
-              <div className="agenda-medico-card" key={medico}>
-                <div className="agenda-medico-header">
-                  <div>
-                    <h2>{medico}</h2>
+              return (
+                <div
+                  className="agenda-medico-card"
+                  key={medico}
+                >
+                  <div className="agenda-medico-header">
+                    <div>
+                      <h2>{medico}</h2>
 
-                    <span>
-                      {turnosMedico.length}{" "}
-                      {turnosMedico.length === 1
-                        ? "turno programado"
-                        : "turnos programados"}
-                    </span>
+                      <span>
+                        {turnosMedico.length}{" "}
+                        {turnosMedico.length ===
+                        1
+                          ? "turno programado"
+                          : "turnos programados"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="agenda-table-container">
+                    <table className="agenda-table">
+                      <thead>
+                        <tr>
+                          <th>Hora</th>
+                          <th>Paciente</th>
+                          <th>
+                            Tipo de turno
+                          </th>
+                          <th>Estado</th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {turnosMedico.map(
+                          (turno) => (
+                            <tr
+                              key={
+                                turno.id_turno
+                              }
+                            >
+                              <td>
+                                <strong className="agenda-hora">
+                                  {
+                                    turno.hora
+                                  }
+                                </strong>
+                              </td>
+
+                              <td>
+                                {
+                                  turno.paciente
+                                }
+                              </td>
+
+                              <td>
+                                {
+                                  turno.motivo_consulta
+                                }
+                              </td>
+
+                              <td>
+                                <span
+                                  className={obtenerClaseEstado(
+                                    turno.estado
+                                  )}
+                                >
+                                  {
+                                    turno.estado
+                                  }
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-
-                <div className="agenda-table-container">
-                  <table className="agenda-table">
-                    <thead>
-                      <tr>
-                        <th>Hora</th>
-                        <th>Paciente</th>
-                        <th>Tipo de turno</th>
-                        <th>Consultorio</th>
-                        <th>Estado</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {turnosMedico.map((turno) => (
-                        <tr key={turno.id}>
-                          <td>
-                            <strong className="agenda-hora">
-                              {turno.hora}
-                            </strong>
-                          </td>
-
-                          <td>{turno.paciente}</td>
-
-                          <td>{turno.tipoTurno}</td>
-
-                          <td>{turno.consultorio}</td>
-
-                          <td>
-                            <span
-                              className={obtenerClaseEstado(
-                                turno.estado
-                              )}
-                            >
-                              {turno.estado}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })}
+              );
+            }
+          )}
         </div>
       ) : (
         <div className="agenda-vacia">
-          <div className="agenda-vacia-icono">📅</div>
+          <div className="agenda-vacia-icono">
+            📅
+          </div>
 
-          <h2>No hay turnos programados</h2>
+          <h2>
+            No hay turnos programados
+          </h2>
 
           <p>
-            No se encontraron turnos para la fecha y el médico
+            No se encontraron turnos para
+            la fecha y el médico
             seleccionados.
           </p>
         </div>

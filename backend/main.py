@@ -59,6 +59,59 @@ class TurnoNuevo(BaseModel):
     observaciones: Optional[str] = None
 
 
+class RecepcionUpdate(BaseModel):
+    estado_recepcion: str
+
+
+class HistoriaClinicaNueva(BaseModel):
+    id_paciente: int
+    antecedentes: Optional[str] = None
+    alergias: Optional[str] = None
+    observaciones_generales: Optional[str] = None
+
+
+class EvolucionNueva(BaseModel):
+    id_hc: int
+    id_medico: int
+    id_turno: Optional[int] = None
+    descripcion: str
+    diagnostico: Optional[str] = None
+    tratamiento: Optional[str] = None
+    indicaciones: Optional[str] = None
+    ruta_archivo: Optional[str] = None
+
+#maggie medicos
+class MedicoNuevo(BaseModel):
+    nombre: str
+    apellido: str
+    especialidad: str
+    matricula: str
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    activo: bool = True
+
+
+class MedicoActualizar(BaseModel):
+    nombre: Optional[str] = None
+    apellido: Optional[str] = None
+    especialidad: Optional[str] = None
+    matricula: Optional[str] = None
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    activo: Optional[bool] = None
+#aca termina medico maggie    
+#coberturas
+class CoberturaNueva(BaseModel):
+    nombre: str
+    tipo: str
+    activo: bool = True
+
+
+class CoberturaActualizar(BaseModel):
+    nombre: Optional[str] = None
+    tipo: Optional[str] = None
+    activo: Optional[bool] = None
+
 # =========================================================
 # INICIO
 # =========================================================
@@ -256,7 +309,7 @@ def inactivar_paciente(id_paciente: int):
 
 
 # =========================================================
-# MÉDICOS
+# MÉDICOS con adaptacion maggie
 # =========================================================
 
 @app.get("/medicos")
@@ -265,27 +318,349 @@ def obtener_medicos():
     conexion = conectar_db()
     cursor = conexion.cursor(dictionary=True)
 
-    cursor.execute("""
-        SELECT
+    try:
+        cursor.execute("""
+            SELECT
+                id_medico,
+                nombre,
+                apellido,
+                especialidad,
+                matricula,
+                telefono,
+                email,
+                activo
+            FROM medico
+            ORDER BY apellido, nombre
+        """)
+
+        medicos = cursor.fetchall()
+
+        return medicos
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+@app.post("/medicos")
+def crear_medico(medico: MedicoNuevo):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO medico (
+                nombre,
+                apellido,
+                especialidad,
+                matricula,
+                telefono,
+                email,
+                activo
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            medico.nombre,
+            medico.apellido,
+            medico.especialidad,
+            medico.matricula,
+            medico.telefono,
+            medico.email,
+            medico.activo
+        ))
+
+        conexion.commit()
+
+        return {
+            "mensaje": "Médico creado correctamente",
+            "id_medico": cursor.lastrowid
+        }
+
+    except mysql.connector.IntegrityError:
+
+        conexion.rollback()
+
+        raise HTTPException(
+            status_code=400,
+            detail="Ya existe un médico registrado con esa matrícula"
+        )
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+@app.put("/medicos/{id_medico}")
+def actualizar_medico(
+    id_medico: int,
+    medico: MedicoActualizar
+):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE medico
+            SET
+                nombre = COALESCE(%s, nombre),
+                apellido = COALESCE(%s, apellido),
+                especialidad = COALESCE(%s, especialidad),
+                matricula = COALESCE(%s, matricula),
+                telefono = COALESCE(%s, telefono),
+                email = COALESCE(%s, email),
+                activo = COALESCE(%s, activo)
+            WHERE id_medico = %s
+        """, (
+            medico.nombre,
+            medico.apellido,
+            medico.especialidad,
+            medico.matricula,
+            medico.telefono,
+            medico.email,
+            medico.activo,
+            id_medico
+        ))
+
+        if cursor.rowcount == 0:
+            cursor.execute("""
+                SELECT id_medico
+                FROM medico
+                WHERE id_medico = %s
+            """, (id_medico,))
+
+            existe = cursor.fetchone()
+
+            if not existe:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Médico no encontrado"
+                )
+
+        conexion.commit()
+
+        return {
+            "mensaje": "Médico actualizado correctamente"
+        }
+
+    except HTTPException:
+
+        conexion.rollback()
+        raise
+
+    except mysql.connector.IntegrityError:
+
+        conexion.rollback()
+
+        raise HTTPException(
+            status_code=400,
+            detail="La matrícula ya está registrada por otro médico"
+        )
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+@app.delete("/medicos/{id_medico}")
+def eliminar_medico(id_medico: int):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE medico
+            SET activo = FALSE
+            WHERE id_medico = %s
+        """, (
             id_medico,
-            nombre,
-            apellido,
-            especialidad,
-            matricula,
-            activo
-        FROM medico
-        WHERE activo = 1
-        ORDER BY apellido, nombre
-    """)
+        ))
 
-    medicos = cursor.fetchall()
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Médico no encontrado"
+            )
 
-    cursor.close()
-    conexion.close()
+        conexion.commit()
 
-    return medicos
+        return {
+            "mensaje": "Médico eliminado correctamente"
+        }
+
+    finally:
+        cursor.close()
+        conexion.close()
+# =========================================================
+# COBERTURAS
+# =========================================================
+
+@app.get("/coberturas")
+def obtener_coberturas():
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT
+                id_cobertura,
+                nombre,
+                tipo,
+                activo
+            FROM cobertura_medica
+            ORDER BY nombre
+        """)
+
+        coberturas = cursor.fetchall()
+
+        return coberturas
+
+    finally:
+        cursor.close()
+        conexion.close()
 
 
+@app.post("/coberturas")
+def crear_cobertura(cobertura: CoberturaNueva):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO cobertura_medica (
+                nombre,
+                tipo,
+                activo
+            )
+            VALUES (%s, %s, %s)
+        """, (
+            cobertura.nombre,
+            cobertura.tipo,
+            cobertura.activo
+        ))
+
+        conexion.commit()
+
+        return {
+            "mensaje": "Cobertura creada correctamente",
+            "id_cobertura": cursor.lastrowid
+        }
+
+    except mysql.connector.Error as error:
+
+        conexion.rollback()
+
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error al crear la cobertura: {error}"
+        )
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+@app.put("/coberturas/{id_cobertura}")
+def actualizar_cobertura(
+    id_cobertura: int,
+    cobertura: CoberturaActualizar
+):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE cobertura_medica
+            SET
+                nombre = COALESCE(%s, nombre),
+                tipo = COALESCE(%s, tipo),
+                activo = COALESCE(%s, activo)
+            WHERE id_cobertura = %s
+        """, (
+            cobertura.nombre,
+            cobertura.tipo,
+            cobertura.activo,
+            id_cobertura
+        ))
+
+        if cursor.rowcount == 0:
+
+            cursor.execute("""
+                SELECT id_cobertura
+                FROM cobertura_medica
+                WHERE id_cobertura = %s
+            """, (
+                id_cobertura,
+            ))
+
+            existe = cursor.fetchone()
+
+            if not existe:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Cobertura no encontrada"
+                )
+
+        conexion.commit()
+
+        return {
+            "mensaje": "Cobertura actualizada correctamente"
+        }
+
+    except HTTPException:
+
+        conexion.rollback()
+        raise
+
+    except mysql.connector.Error as error:
+
+        conexion.rollback()
+
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error al actualizar la cobertura: {error}"
+        )
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+@app.delete("/coberturas/{id_cobertura}")
+def eliminar_cobertura(id_cobertura: int):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE cobertura_medica
+            SET activo = FALSE
+            WHERE id_cobertura = %s
+        """, (
+            id_cobertura,
+        ))
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Cobertura no encontrada"
+            )
+
+        conexion.commit()
+
+        return {
+            "mensaje": "Cobertura eliminada correctamente"
+        }
+
+    finally:
+        cursor.close()
+        conexion.close()
 # =========================================================
 # ESTADOS DE TURNO
 # =========================================================
@@ -355,6 +730,7 @@ def obtener_turnos():
             e.descripcion AS estado,
 
             t.hora_llegada,
+            t.hora_inicio_consulta,
             t.estado_recepcion,
             t.observaciones
 
@@ -619,3 +995,547 @@ def modificar_turno(
 
         cursor.close()
         conexion.close()
+
+
+# =========================================================
+# RECEPCIÓN
+# =========================================================
+
+@app.put("/turnos/{id_turno}/recepcion")
+def actualizar_recepcion(
+    id_turno: int,
+    datos: RecepcionUpdate
+):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor()
+
+    try:
+
+        estados_validos = [
+            "Pendiente",
+            "En espera",
+            "En consulta",
+            "Finalizado",
+            "Ausente"
+        ]
+
+        if datos.estado_recepcion not in estados_validos:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Estado de recepción inválido"
+            )
+
+
+        # PACIENTE LLEGA:
+        # empieza el tiempo de espera
+
+        if datos.estado_recepcion == "En espera":
+
+            cursor.execute("""
+                UPDATE turno
+                SET
+                    estado_recepcion = %s,
+                    hora_llegada = NOW(),
+                    hora_inicio_consulta = NULL
+                WHERE id_turno = %s
+            """, (
+                datos.estado_recepcion,
+                id_turno
+            ))
+
+
+        # EMPIEZA LA CONSULTA:
+        # se guarda la hora para congelar el reloj
+
+        elif datos.estado_recepcion == "En consulta":
+
+            cursor.execute("""
+                UPDATE turno
+                SET
+                    estado_recepcion = %s,
+                    hora_inicio_consulta = NOW()
+                WHERE id_turno = %s
+            """, (
+                datos.estado_recepcion,
+                id_turno
+            ))
+
+
+        # FINALIZADO, AUSENTE O PENDIENTE
+
+        else:
+
+            cursor.execute("""
+                UPDATE turno
+                SET estado_recepcion = %s
+                WHERE id_turno = %s
+            """, (
+                datos.estado_recepcion,
+                id_turno
+            ))
+
+
+        if cursor.rowcount == 0:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Turno no encontrado"
+            )
+
+
+        conexion.commit()
+
+        return {
+            "mensaje":
+                "Estado de recepción actualizado correctamente"
+        }
+
+    finally:
+
+        cursor.close()
+        conexion.close()
+
+# =========================================================
+# HISTORIA CLÍNICA
+# =========================================================
+
+
+@app.get("/historias-clinicas")
+def obtener_historias_clinicas():
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute("""
+            SELECT
+                hc.id_hc,
+                hc.id_paciente,
+                p.nombre,
+                p.apellido,
+                p.dni,
+                hc.antecedentes,
+                hc.alergias,
+                hc.observaciones_generales,
+                hc.fecha_creacion
+            FROM historia_clinica hc
+            INNER JOIN paciente p
+                ON hc.id_paciente = p.id_paciente
+            ORDER BY p.apellido, p.nombre
+        """)
+
+        historias = cursor.fetchall()
+
+        return historias
+
+    finally:
+
+        cursor.close()
+        conexion.close()
+
+
+@app.get("/historias-clinicas/paciente/{id_paciente}")
+def obtener_historia_clinica_paciente(
+    id_paciente: int
+):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute("""
+            SELECT
+                hc.id_hc,
+                hc.id_paciente,
+
+                p.nombre,
+                p.apellido,
+                p.dni,
+                p.fecha_nacimiento,
+                p.telefono,
+                p.email,
+                p.id_cobertura,
+                p.plan,
+                p.numero_credencial,
+
+                hc.antecedentes,
+                hc.alergias,
+                hc.observaciones_generales,
+                hc.fecha_creacion
+
+            FROM historia_clinica hc
+
+            INNER JOIN paciente p
+                ON hc.id_paciente = p.id_paciente
+
+            WHERE hc.id_paciente = %s
+        """, (
+            id_paciente,
+        ))
+
+        historia = cursor.fetchone()
+
+        if not historia:
+
+            raise HTTPException(
+                status_code=404,
+                detail="El paciente no tiene historia clínica"
+            )
+
+        return historia
+
+    finally:
+
+        cursor.close()
+        conexion.close()
+
+
+@app.post("/historias-clinicas")
+def crear_historia_clinica(
+    historia: HistoriaClinicaNueva
+):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute("""
+            SELECT id_paciente
+            FROM paciente
+            WHERE id_paciente = %s
+        """, (
+            historia.id_paciente,
+        ))
+
+        paciente = cursor.fetchone()
+
+        if not paciente:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Paciente no encontrado"
+            )
+
+
+        cursor.execute("""
+            SELECT id_hc
+            FROM historia_clinica
+            WHERE id_paciente = %s
+        """, (
+            historia.id_paciente,
+        ))
+
+        historia_existente = cursor.fetchone()
+
+        if historia_existente:
+
+            raise HTTPException(
+                status_code=400,
+                detail="El paciente ya tiene una historia clínica"
+            )
+
+
+        cursor.execute("""
+            INSERT INTO historia_clinica (
+                id_paciente,
+                antecedentes,
+                alergias,
+                observaciones_generales
+            )
+            VALUES (%s, %s, %s, %s)
+        """, (
+            historia.id_paciente,
+            historia.antecedentes,
+            historia.alergias,
+            historia.observaciones_generales
+        ))
+
+        conexion.commit()
+
+        return {
+            "mensaje":
+                "Historia clínica creada correctamente",
+            "id_hc":
+                cursor.lastrowid
+        }
+
+    except HTTPException:
+
+        conexion.rollback()
+        raise
+
+    except mysql.connector.Error as error:
+
+        conexion.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al crear la historia clínica: {error}"
+        )
+
+    finally:
+
+        cursor.close()
+        conexion.close()
+
+
+@app.put("/historias-clinicas/{id_hc}")
+def modificar_historia_clinica(
+    id_hc: int,
+    historia: HistoriaClinicaNueva
+):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute("""
+            UPDATE historia_clinica
+            SET
+                antecedentes = %s,
+                alergias = %s,
+                observaciones_generales = %s
+            WHERE id_hc = %s
+        """, (
+            historia.antecedentes,
+            historia.alergias,
+            historia.observaciones_generales,
+            id_hc
+        ))
+
+        if cursor.rowcount == 0:
+
+            cursor.execute("""
+                SELECT id_hc
+                FROM historia_clinica
+                WHERE id_hc = %s
+            """, (
+                id_hc,
+            ))
+
+            existe = cursor.fetchone()
+
+            if not existe:
+
+                raise HTTPException(
+                    status_code=404,
+                    detail="Historia clínica no encontrada"
+                )
+
+        conexion.commit()
+
+        return {
+            "mensaje":
+                "Historia clínica modificada correctamente"
+        }
+
+    except HTTPException:
+
+        conexion.rollback()
+        raise
+
+    except mysql.connector.Error as error:
+
+        conexion.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al modificar la historia clínica: {error}"
+        )
+
+    finally:
+
+        cursor.close()
+        conexion.close()
+
+
+@app.get("/historias-clinicas/{id_hc}/evoluciones")
+def obtener_evoluciones(
+    id_hc: int
+):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+
+        cursor.execute("""
+            SELECT
+                e.id_evolucion,
+                e.id_hc,
+                e.id_medico,
+                e.id_turno,
+                e.fecha_hora,
+                e.descripcion,
+                e.diagnostico,
+                e.tratamiento,
+                e.indicaciones,
+                e.ruta_archivo,
+
+                CONCAT(
+                    m.nombre,
+                    ' ',
+                    m.apellido
+                ) AS medico
+
+            FROM evolucion e
+
+            INNER JOIN medico m
+                ON e.id_medico = m.id_medico
+
+            WHERE e.id_hc = %s
+
+            ORDER BY e.fecha_hora DESC
+        """, (
+            id_hc,
+        ))
+
+        evoluciones = cursor.fetchall()
+
+        return evoluciones
+
+    finally:
+
+        cursor.close()
+        conexion.close()        
+
+# =========================================================
+# EVOLUCIONES
+# =========================================================
+
+
+@app.post("/evoluciones")
+def crear_evolucion(
+    evolucion: EvolucionNueva
+):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+
+        # Verificar que exista la historia clínica
+        cursor.execute("""
+            SELECT id_hc
+            FROM historia_clinica
+            WHERE id_hc = %s
+        """, (
+            evolucion.id_hc,
+        ))
+
+        historia = cursor.fetchone()
+
+        if not historia:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Historia clínica no encontrada"
+            )
+
+
+        # Verificar que exista el médico
+        cursor.execute("""
+            SELECT id_medico
+            FROM medico
+            WHERE id_medico = %s
+        """, (
+            evolucion.id_medico,
+        ))
+
+        medico = cursor.fetchone()
+
+        if not medico:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Médico no encontrado"
+            )
+
+
+        # Si se envió un turno, verificar que exista
+        if evolucion.id_turno is not None:
+
+            cursor.execute("""
+                SELECT id_turno
+                FROM turno
+                WHERE id_turno = %s
+            """, (
+                evolucion.id_turno,
+            ))
+
+            turno = cursor.fetchone()
+
+            if not turno:
+
+                raise HTTPException(
+                    status_code=404,
+                    detail="Turno no encontrado"
+                )
+
+
+        # Crear la evolución
+        cursor.execute("""
+            INSERT INTO evolucion (
+                id_hc,
+                id_medico,
+                id_turno,
+                descripcion,
+                diagnostico,
+                tratamiento,
+                indicaciones,
+                ruta_archivo
+            )
+            VALUES (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s
+            )
+        """, (
+            evolucion.id_hc,
+            evolucion.id_medico,
+            evolucion.id_turno,
+            evolucion.descripcion,
+            evolucion.diagnostico,
+            evolucion.tratamiento,
+            evolucion.indicaciones,
+            evolucion.ruta_archivo
+        ))
+
+        conexion.commit()
+
+        id_nueva_evolucion = cursor.lastrowid
+
+        return {
+            "mensaje": "Evolución creada correctamente",
+            "id_evolucion": id_nueva_evolucion
+        }
+
+    except HTTPException:
+
+        conexion.rollback()
+        raise
+
+    except mysql.connector.Error as error:
+
+        conexion.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al crear la evolución: {error}"
+        )
+
+    finally:
+
+        cursor.close()
+        conexion.close()        

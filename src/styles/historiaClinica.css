@@ -1,0 +1,278 @@
+.historia-page {
+  width: 100%;
+}
+
+.historia-header {
+  margin-bottom: 24px;
+}
+
+.historia-header h1 {
+  margin: 0;
+  font-size: 28px;
+  color: #172033;
+}
+
+.historia-header p {
+  margin-top: 6px;
+  color: #6b7280;
+}
+
+.historia-header-detalle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.historia-search-container {
+  margin-bottom: 20px;
+}
+
+.historia-search {
+  width: 100%;
+  max-width: 480px;
+  padding: 12px 14px;
+  border: 1px solid #d9dee7;
+  border-radius: 10px;
+  background: #ffffff;
+  font-size: 14px;
+  outline: none;
+}
+
+.historia-search:focus {
+  border-color: #38bdf8;
+}
+
+.historia-table-container {
+  background: #ffffff;
+  border: 1px solid #e6eaf0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.historia-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.historia-table th {
+  text-align: left;
+  padding: 14px 16px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.historia-table td {
+  padding: 15px 16px;
+  border-top: 1px solid #edf0f4;
+  color: #334155;
+  font-size: 14px;
+}
+
+.historia-btn-primary {
+  border: none;
+  background: #0ea5e9;
+  color: #ffffff;
+  padding: 9px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.historia-btn-primary:hover {
+  background: #0284c7;
+}
+
+.historia-btn-volver {
+  border: none;
+  background: transparent;
+  color: #0284c7;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 12px;
+}
+
+.historia-sin-resultados {
+  text-align: center;
+  color: #94a3b8;
+  padding: 30px !important;
+}
+
+.historia-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.historia-tab {
+  border: 1px solid #d7dde5;
+  background: #ffffff;
+  color: #475569;
+  padding: 9px 18px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.historia-tab.activo {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0369a1;
+}
+
+.historia-resumen-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 18px;
+}
+
+.historia-card {
+  background: #ffffff;
+  border: 1px solid #e6eaf0;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.historia-card h3 {
+  margin: 0 0 18px 0;
+  font-size: 16px;
+  color: #172033;
+}
+
+.historia-card-observaciones {
+  grid-column: 1 / -1;
+}
+
+.historia-dato {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.historia-dato:last-child {
+  border-bottom: none;
+}
+
+.historia-dato span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.historia-dato strong {
+  color: #1e293b;
+  font-size: 13px;
+  text-align: right;
+}
+
+.historia-bloque {
+  margin-bottom: 20px;
+}
+
+.historia-bloque:last-child {
+  margin-bottom: 0;
+}
+
+.historia-bloque span {
+  display: block;
+  margin-bottom: 7px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.historia-bloque p,
+.historia-card-observaciones p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.historia-fecha-creacion {
+  margin-top: 18px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.historia-evoluciones {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.historia-evolucion-card {
+  background: #ffffff;
+  border: 1px solid #e6eaf0;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.historia-evolucion-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.historia-evolucion-header div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.historia-evolucion-header strong {
+  color: #172033;
+}
+
+.historia-evolucion-header span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.historia-evolucion-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.historia-evolucion-grid span {
+  display: block;
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.historia-evolucion-grid p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.historia-mensaje {
+  background: #ffffff;
+  border: 1px solid #e6eaf0;
+  border-radius: 14px;
+  padding: 30px;
+  text-align: center;
+  color: #64748b;
+}
+
+@media (max-width: 900px) {
+  .historia-resumen-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .historia-card-observaciones {
+    grid-column: auto;
+  }
+
+  .historia-evolucion-grid {
+    grid-template-columns: 1fr;
+  }
+}

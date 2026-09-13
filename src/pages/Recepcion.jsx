@@ -3,135 +3,123 @@ import "../styles/recepcion.css";
 
 function Recepcion() {
   const [busqueda, setBusqueda] = useState("");
+  const [turnos, setTurnos] = useState([]);
   const [, setActualizacion] = useState(0);
 
-  const [turnos, setTurnos] = useState([
-    {
-      id: 1,
-      hora: "09:00",
-      paciente: "María González",
-      medico: "Dr. Juan Pérez",
-      tipoTurno: "Primera consulta",
-      consultorio: "Consultorio 1",
-      estadoRecepcion: "Pendiente",
-      inicioEspera: null,
-      tiempoEsperaFinal: null,
-    },
-    {
-      id: 2,
-      hora: "10:30",
-      paciente: "Carlos Pérez",
-      medico: "Dra. Laura Gómez",
-      tipoTurno: "Postoperatorio",
-      consultorio: "Consultorio 2",
-      estadoRecepcion: "Pendiente",
-      inicioEspera: null,
-      tiempoEsperaFinal: null,
-    },
-    {
-      id: 3,
-      hora: "11:00",
-      paciente: "Lucía Fernández",
-      medico: "Dr. Juan Pérez",
-      tipoTurno: "Consulta",
-      consultorio: "Consultorio 1",
-      estadoRecepcion: "Pendiente",
-      inicioEspera: null,
-      tiempoEsperaFinal: null,
-    },
-  ]);
+  // =========================================================
+  // CARGAR TURNOS DESDE FASTAPI
+  // =========================================================
 
-  // Actualiza los relojes una vez por segundo.
+  const cargarTurnos = async () => {
+    try {
+      const respuesta = await fetch(
+        "http://127.0.0.1:8000/turnos"
+      );
+
+      if (!respuesta.ok) {
+        throw new Error(
+          "No se pudieron obtener los turnos"
+        );
+      }
+
+      const datos = await respuesta.json();
+
+      setTurnos(datos);
+    } catch (error) {
+      console.error(
+        "Error al cargar turnos:",
+        error
+      );
+    }
+  };
+
+  useEffect(() => {
+    cargarTurnos();
+  }, []);
+
+  // =========================================================
+  // RELOJ
+  // =========================================================
+
   useEffect(() => {
     const intervalo = setInterval(() => {
-      setActualizacion((valor) => valor + 1);
+      setActualizacion(
+        (valor) => valor + 1
+      );
     }, 1000);
 
     return () => clearInterval(intervalo);
   }, []);
 
-  const normalizarTexto = (texto) => {
-    return texto
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-  };
+  // =========================================================
+  // ACTUALIZAR ESTADO DE RECEPCIÓN
+  // =========================================================
 
-  const turnosFiltrados = turnos.filter((turno) => {
-    const textoBusqueda = normalizarTexto(busqueda);
-
-    return (
-      normalizarTexto(turno.paciente).includes(textoBusqueda) ||
-      normalizarTexto(turno.medico).includes(textoBusqueda) ||
-      normalizarTexto(turno.tipoTurno).includes(textoBusqueda) ||
-      normalizarTexto(turno.estadoRecepcion).includes(textoBusqueda)
-    );
-  });
-
-  const calcularTiempo = (inicio) => {
-    if (!inicio) {
-      return "--:--:--";
-    }
-
-    const diferencia = Math.max(
-      0,
-      Math.floor((Date.now() - inicio) / 1000)
-    );
-
-    const horas = Math.floor(diferencia / 3600);
-    const minutos = Math.floor((diferencia % 3600) / 60);
-    const segundos = diferencia % 60;
-
-    return `${String(horas).padStart(2, "0")}:${String(
-      minutos
-    ).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
-  };
-
-  const marcarLlegada = (id) => {
-    setTurnos(
-      turnos.map((turno) =>
-        turno.id === id
-          ? {
-              ...turno,
-              estadoRecepcion: "En espera",
-              inicioEspera: Date.now(),
-              tiempoEsperaFinal: null,
-            }
-          : turno
-      )
-    );
-  };
-
-  const iniciarConsulta = (id) => {
-    setTurnos(
-      turnos.map((turno) => {
-        if (turno.id !== id) {
-          return turno;
+  const actualizarEstadoRecepcion = async (
+    idTurno,
+    nuevoEstado
+  ) => {
+    try {
+      const respuesta = await fetch(
+        `http://127.0.0.1:8000/turnos/${idTurno}/recepcion`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            estado_recepcion:
+              nuevoEstado,
+          }),
         }
+      );
 
-        return {
-          ...turno,
-          estadoRecepcion: "En consulta",
-          tiempoEsperaFinal: calcularTiempo(turno.inicioEspera),
-        };
-      })
+      if (!respuesta.ok) {
+        throw new Error(
+          "No se pudo actualizar el estado"
+        );
+      }
+
+      await cargarTurnos();
+    } catch (error) {
+      console.error(
+        "Error al actualizar recepción:",
+        error
+      );
+
+      alert(
+        "No se pudo actualizar el estado del paciente."
+      );
+    }
+  };
+
+  // =========================================================
+  // ACCIONES
+  // =========================================================
+
+  const marcarLlegada = (idTurno) => {
+    actualizarEstadoRecepcion(
+      idTurno,
+      "En espera"
     );
   };
 
-  const finalizarAtencion = (id) => {
-    setTurnos(
-      turnos.map((turno) =>
-        turno.id === id
-          ? {
-              ...turno,
-              estadoRecepcion: "Finalizado",
-            }
-          : turno
-      )
+  const iniciarConsulta = (idTurno) => {
+    actualizarEstadoRecepcion(
+      idTurno,
+      "En consulta"
     );
   };
 
-  const marcarAusente = (id) => {
+  const finalizarAtencion = (idTurno) => {
+    actualizarEstadoRecepcion(
+      idTurno,
+      "Finalizado"
+    );
+  };
+
+  const marcarAusente = (idTurno) => {
     const confirmar = window.confirm(
       "¿Querés marcar al paciente como ausente?"
     );
@@ -140,52 +128,179 @@ function Recepcion() {
       return;
     }
 
-    setTurnos(
-      turnos.map((turno) =>
-        turno.id === id
-          ? {
-              ...turno,
-              estadoRecepcion: "Ausente",
-            }
-          : turno
-      )
+    actualizarEstadoRecepcion(
+      idTurno,
+      "Ausente"
     );
   };
 
-  const obtenerTiempoEspera = (turno) => {
-    if (turno.estadoRecepcion === "En espera") {
-      return calcularTiempo(turno.inicioEspera);
+  // =========================================================
+  // BUSCADOR
+  // =========================================================
+
+  const normalizarTexto = (texto) => {
+    return String(texto || "")
+      .normalize("NFD")
+      .replace(
+        /[\u0300-\u036f]/g,
+        ""
+      )
+      .toLowerCase();
+  };
+
+  const turnosFiltrados =
+    turnos.filter((turno) => {
+      const textoBusqueda =
+        normalizarTexto(busqueda);
+
+      return (
+        normalizarTexto(
+          turno.paciente
+        ).includes(textoBusqueda) ||
+        normalizarTexto(
+          turno.medico
+        ).includes(textoBusqueda) ||
+        normalizarTexto(
+          turno.motivo_consulta
+        ).includes(textoBusqueda) ||
+        normalizarTexto(
+          turno.estado_recepcion
+        ).includes(textoBusqueda)
+      );
+    });
+
+  // =========================================================
+  // TIEMPO DE ESPERA
+  // =========================================================
+
+  const calcularTiempo = (
+    inicio,
+    fin = null
+  ) => {
+    if (!inicio) {
+      return "--:--:--";
     }
 
-    if (turno.tiempoEsperaFinal) {
-      return turno.tiempoEsperaFinal;
+    const tiempoInicio =
+      new Date(inicio).getTime();
+
+    const tiempoFin = fin
+      ? new Date(fin).getTime()
+      : Date.now();
+
+    if (
+      Number.isNaN(tiempoInicio) ||
+      Number.isNaN(tiempoFin)
+    ) {
+      return "--:--:--";
+    }
+
+    const diferencia = Math.max(
+      0,
+      Math.floor(
+        (tiempoFin -
+          tiempoInicio) /
+          1000
+      )
+    );
+
+    const horas = Math.floor(
+      diferencia / 3600
+    );
+
+    const minutos = Math.floor(
+      (diferencia % 3600) / 60
+    );
+
+    const segundos =
+      diferencia % 60;
+
+    return `${String(horas).padStart(
+      2,
+      "0"
+    )}:${String(minutos).padStart(
+      2,
+      "0"
+    )}:${String(segundos).padStart(
+      2,
+      "0"
+    )}`;
+  };
+
+  const obtenerTiempoEspera = (
+    turno
+  ) => {
+    if (!turno.hora_llegada) {
+      return "--:--:--";
+    }
+
+    // Mientras está esperando,
+    // el reloj sigue corriendo.
+    if (
+      turno.estado_recepcion ===
+      "En espera"
+    ) {
+      return calcularTiempo(
+        turno.hora_llegada
+      );
+    }
+
+    // Cuando empieza la consulta,
+    // usamos hora_inicio_consulta
+    // como hora final.
+    if (
+      turno.hora_inicio_consulta
+    ) {
+      return calcularTiempo(
+        turno.hora_llegada,
+        turno.hora_inicio_consulta
+      );
     }
 
     return "--:--:--";
   };
 
-  const obtenerClaseEstado = (estado) => {
-    return `recepcion-estado recepcion-estado-${estado
+  // =========================================================
+  // ESTADO
+  // =========================================================
+
+  const obtenerClaseEstado = (
+    estado
+  ) => {
+    return `recepcion-estado recepcion-estado-${String(
+      estado || "Pendiente"
+    )
       .toLowerCase()
-      .replace(" ", "-")}`;
+      .replace(/\s+/g, "-")}`;
   };
+
+  // =========================================================
+  // HTML
+  // =========================================================
 
   return (
     <section className="recepcion-page">
       <div className="recepcion-header">
         <div>
           <h1>Recepción</h1>
-          <p>Seguimiento de pacientes y turnos del día.</p>
+
+          <p>
+            Seguimiento de pacientes y
+            turnos del día.
+          </p>
         </div>
       </div>
 
       <div className="recepcion-resumen">
         <div className="recepcion-resumen-card">
           <span>En espera</span>
+
           <strong>
             {
               turnos.filter(
-                (turno) => turno.estadoRecepcion === "En espera"
+                (turno) =>
+                  turno.estado_recepcion ===
+                  "En espera"
               ).length
             }
           </strong>
@@ -193,10 +308,13 @@ function Recepcion() {
 
         <div className="recepcion-resumen-card">
           <span>En consulta</span>
+
           <strong>
             {
               turnos.filter(
-                (turno) => turno.estadoRecepcion === "En consulta"
+                (turno) =>
+                  turno.estado_recepcion ===
+                  "En consulta"
               ).length
             }
           </strong>
@@ -204,10 +322,13 @@ function Recepcion() {
 
         <div className="recepcion-resumen-card">
           <span>Finalizados</span>
+
           <strong>
             {
               turnos.filter(
-                (turno) => turno.estadoRecepcion === "Finalizado"
+                (turno) =>
+                  turno.estado_recepcion ===
+                  "Finalizado"
               ).length
             }
           </strong>
@@ -215,10 +336,13 @@ function Recepcion() {
 
         <div className="recepcion-resumen-card">
           <span>Ausentes</span>
+
           <strong>
             {
               turnos.filter(
-                (turno) => turno.estadoRecepcion === "Ausente"
+                (turno) =>
+                  turno.estado_recepcion ===
+                  "Ausente"
               ).length
             }
           </strong>
@@ -231,7 +355,11 @@ function Recepcion() {
           className="recepcion-search"
           placeholder="Buscar paciente, médico, tipo o estado..."
           value={busqueda}
-          onChange={(evento) => setBusqueda(evento.target.value)}
+          onChange={(evento) =>
+            setBusqueda(
+              evento.target.value
+            )
+          }
         />
       </div>
 
@@ -243,113 +371,168 @@ function Recepcion() {
               <th>Paciente</th>
               <th>Médico</th>
               <th>Tipo</th>
-              <th>Consultorio</th>
               <th>Estado</th>
-              <th>Tiempo en espera</th>
+              <th>
+                Tiempo en espera
+              </th>
               <th>Acciones</th>
             </tr>
           </thead>
 
           <tbody>
-            {turnosFiltrados.map((turno) => (
-              <tr key={turno.id}>
-                <td>
-                  <strong>{turno.hora}</strong>
-                </td>
+            {turnosFiltrados.map(
+              (turno) => {
+                const estado =
+                  turno.estado_recepcion ||
+                  "Pendiente";
 
-                <td>{turno.paciente}</td>
-                <td>{turno.medico}</td>
-                <td>{turno.tipoTurno}</td>
-                <td>{turno.consultorio}</td>
-
-                <td>
-                  <span
-                    className={obtenerClaseEstado(
-                      turno.estadoRecepcion
-                    )}
-                  >
-                    {turno.estadoRecepcion}
-                  </span>
-                </td>
-
-                <td>
-                  <span
-                    className={
-                      turno.estadoRecepcion === "En espera"
-                        ? "recepcion-reloj activo"
-                        : "recepcion-reloj"
+                return (
+                  <tr
+                    key={
+                      turno.id_turno
                     }
                   >
-                    {turno.estadoRecepcion === "En espera" && "⏱ "}
-                    {obtenerTiempoEspera(turno)}
-                  </span>
-                </td>
+                    <td>
+                      <strong>
+                        {turno.hora}
+                      </strong>
+                    </td>
 
-                <td>
-                  <div className="recepcion-acciones">
-                    {turno.estadoRecepcion === "Pendiente" && (
-                      <>
-                        <button
-                          type="button"
-                          className="recepcion-btn-primary"
-                          onClick={() => marcarLlegada(turno.id)}
-                        >
-                          Llegó
-                        </button>
+                    <td>
+                      {
+                        turno.paciente
+                      }
+                    </td>
 
-                        <button
-                          type="button"
-                          className="recepcion-btn-secondary"
-                          onClick={() => marcarAusente(turno.id)}
-                        >
-                          Ausente
-                        </button>
-                      </>
-                    )}
+                    <td>
+                      {turno.medico}
+                    </td>
 
-                    {turno.estadoRecepcion === "En espera" && (
-                      <button
-                        type="button"
-                        className="recepcion-btn-primary"
-                        onClick={() => iniciarConsulta(turno.id)}
+                    <td>
+                      {
+                        turno.motivo_consulta
+                      }
+                    </td>
+
+                    <td>
+                      <span
+                        className={obtenerClaseEstado(
+                          estado
+                        )}
                       >
-                        Iniciar consulta
-                      </button>
-                    )}
+                        {estado}
+                      </span>
+                    </td>
 
-                    {turno.estadoRecepcion === "En consulta" && (
-                      <button
-                        type="button"
-                        className="recepcion-btn-primary"
-                        onClick={() => finalizarAtencion(turno.id)}
+                    <td>
+                      <span
+                        className={
+                          estado ===
+                          "En espera"
+                            ? "recepcion-reloj activo"
+                            : "recepcion-reloj"
+                        }
                       >
-                        Finalizar
-                      </button>
-                    )}
+                        {estado ===
+                          "En espera" &&
+                          "⏱ "}
 
-                    {turno.estadoRecepcion === "Finalizado" && (
-                      <span className="recepcion-sin-acciones">
-                        Atención finalizada
+                        {obtenerTiempoEspera(
+                          turno
+                        )}
                       </span>
-                    )}
+                    </td>
 
-                    {turno.estadoRecepcion === "Ausente" && (
-                      <span className="recepcion-sin-acciones">
-                        Paciente ausente
-                      </span>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                    <td>
+                      <div className="recepcion-acciones">
+                        {estado ===
+                          "Pendiente" && (
+                          <>
+                            <button
+                              type="button"
+                              className="recepcion-btn-primary"
+                              onClick={() =>
+                                marcarLlegada(
+                                  turno.id_turno
+                                )
+                              }
+                            >
+                              Llegó
+                            </button>
 
-            {turnosFiltrados.length === 0 && (
+                            <button
+                              type="button"
+                              className="recepcion-btn-secondary"
+                              onClick={() =>
+                                marcarAusente(
+                                  turno.id_turno
+                                )
+                              }
+                            >
+                              Ausente
+                            </button>
+                          </>
+                        )}
+
+                        {estado ===
+                          "En espera" && (
+                          <button
+                            type="button"
+                            className="recepcion-btn-primary"
+                            onClick={() =>
+                              iniciarConsulta(
+                                turno.id_turno
+                              )
+                            }
+                          >
+                            Iniciar consulta
+                          </button>
+                        )}
+
+                        {estado ===
+                          "En consulta" && (
+                          <button
+                            type="button"
+                            className="recepcion-btn-primary"
+                            onClick={() =>
+                              finalizarAtencion(
+                                turno.id_turno
+                              )
+                            }
+                          >
+                            Finalizar
+                          </button>
+                        )}
+
+                        {estado ===
+                          "Finalizado" && (
+                          <span className="recepcion-sin-acciones">
+                            Atención finalizada
+                          </span>
+                        )}
+
+                        {estado ===
+                          "Ausente" && (
+                          <span className="recepcion-sin-acciones">
+                            Paciente ausente
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              }
+            )}
+
+            {turnosFiltrados.length ===
+              0 && (
               <tr>
                 <td
-                  colSpan="8"
+                  colSpan="7"
                   className="recepcion-sin-resultados"
                 >
-                  No se encontraron turnos.
+                  No se encontraron
+                  turnos.
                 </td>
               </tr>
             )}
