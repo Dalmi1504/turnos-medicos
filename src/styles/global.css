@@ -53,3 +53,24 @@ img {
   max-width: 100%;
   display: block;
 }
+
+/* =========================
+   USUARIO DEL SIDEBAR
+========================= */
+
+.sidebar-user {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 30px;
+}
+
+.sidebar-user strong {
+  display: block;
+}
+
+.sidebar-user span {
+  display: block;
+  font-size: 13px;
+  color: #94a3b8;
+}
