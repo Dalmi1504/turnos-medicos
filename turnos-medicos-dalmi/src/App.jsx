@@ -11,11 +11,23 @@ import HistoriaClinica from "./pages/HistoriaClinica";
 import Coberturas from "./pages/Coberturas";
 import Usuarios from "./pages/Usuarios";
 import Recepcion from "./pages/Recepcion";
+import Login from "./pages/Login";
+import Registro from "./pages/Registro";
+import PortalPaciente from "./pages/PortalPaciente";
+import MisTurnosPaciente from "./pages/MisTurnosPaciente";
+import SolicitarTurnoPaciente from "./pages/SolicitarTurnoPaciente";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Ruta pública del Login (fuera del MainLayout para que no muestre la barra lateral) */}
+        <Route path="/login" element={<Login />} />
+        
+        {/* Ruta pública del Registro */}
+        <Route path="/registro" element={<Registro />} />
+
+        {/* Rutas protegidas que usan el MainLayout (con barra lateral y menú) */}
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/pacientes" element={<Pacientes />} />
@@ -31,15 +43,21 @@ function App() {
           <Route path="/usuarios" element={<Usuarios />} />
         </Route>
 
+        {/* Al entrar a la raíz del sitio, redirige al Login */}
         <Route
           path="/"
-          element={<Navigate to="/dashboard" replace />}
+          element={<Navigate to="/login" replace />}
         />
 
+        {/* Cualquier ruta que no exista redirige al login */}
         <Route
           path="*"
-          element={<Navigate to="/dashboard" replace />}
+          element={<Navigate to="/login" replace />}
         />
+        <Route path="/portal-paciente" element={<PortalPaciente />} />
+
+        <Route path="/portal-paciente/mis-turnos" element={<MisTurnosPaciente />} />
+        <Route path="/portal-paciente/nuevo-turno" element={<SolicitarTurnoPaciente />} />  
       </Routes>
     </BrowserRouter>
   );
