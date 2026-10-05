@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import "../styles/agenda.css";
+import "../../styles/agenda.css";
 
 function Agenda() {
   const [fechaSeleccionada, setFechaSeleccionada] =

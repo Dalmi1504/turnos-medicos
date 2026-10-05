@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 import mysql.connector
+import bcrypt
+from datetime import datetime, timedelta
 
 
 # =========================================================
@@ -99,6 +101,19 @@ class MedicoActualizar(BaseModel):
     telefono: Optional[str] = None
     email: Optional[str] = None
     activo: Optional[bool] = None
+
+class MedicoConUsuarioNuevo(BaseModel):
+    nombre: str
+    apellido: str
+    especialidad: str
+    matricula: str
+    telefono: Optional[str] = None
+    email: str
+
+    username: str
+    password: str
+
+    activo: bool = True    
 #aca termina medico maggie    
 #coberturas
 class CoberturaNueva(BaseModel):
@@ -112,6 +127,21 @@ class CoberturaActualizar(BaseModel):
     tipo: Optional[str] = None
     activo: Optional[bool] = None
 
+class BloqueoAgendaNuevo(BaseModel):
+    id_medico: int
+    fecha: str
+    hora_inicio: Optional[str] = None
+    hora_fin: Optional[str] = None
+    motivo: str
+    dia_completo: bool = False
+
+class AgendaMedicaNueva(BaseModel):
+    id_medico: int
+    dia_semana: str
+    hora_inicio: str
+    hora_fin: str
+    duracion_turno: int
+    activo: bool = True
 # =========================================================
 # INICIO
 # =========================================================
@@ -493,6 +523,124 @@ def eliminar_medico(id_medico: int):
     finally:
         cursor.close()
         conexion.close()
+
+# =========================================================
+# ADMINISTRACIÓN - ALTA DE MÉDICO CON USUARIO 4/10 
+# =========================================================
+
+@app.post("/admin/medicos")
+def crear_medico_con_usuario(datos: MedicoConUsuarioNuevo):
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        # Hashear la contraseña antes de guardarla
+        password_hash = bcrypt.hashpw(
+            datos.password.encode("utf-8"),
+            bcrypt.gensalt()
+        ).decode("utf-8")
+
+        # 1. Crear el médico
+        cursor.execute("""
+            INSERT INTO medico (
+                nombre,
+                apellido,
+                especialidad,
+                matricula,
+                telefono,
+                email,
+                activo
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            datos.nombre,
+            datos.apellido,
+            datos.especialidad,
+            datos.matricula,
+            datos.telefono,
+            datos.email,
+            datos.activo
+        ))
+
+        id_medico = cursor.lastrowid
+
+        # 2. Crear el usuario asociado al médico
+        cursor.execute("""
+            INSERT INTO usuario (
+                username,
+                password,
+                email,
+                id_medico,
+                activo
+            )
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            datos.username,
+            password_hash,
+            datos.email,
+            id_medico,
+            datos.activo
+        ))
+
+        id_usuario = cursor.lastrowid
+
+        # 3. Buscar el rol Médico
+        cursor.execute("""
+            SELECT id_rol
+            FROM rol
+            WHERE descripcion = %s
+        """, ("Médico",))
+
+        rol_medico = cursor.fetchone()
+
+        if not rol_medico:
+            raise HTTPException(
+                status_code=500,
+                detail="No está configurado el rol Médico"
+            )
+
+        # 4. Asignar el rol Médico al usuario
+        cursor.execute("""
+            INSERT INTO usuario_rol (
+                id_usuario,
+                id_rol
+            )
+            VALUES (%s, %s)
+        """, (
+            id_usuario,
+            rol_medico["id_rol"]
+        ))
+
+        # Si salió TODO bien, recién acá guardamos
+        conexion.commit()
+
+        return {
+            "mensaje": "Médico y usuario creados correctamente",
+            "id_medico": id_medico,
+            "id_usuario": id_usuario
+        }
+
+    except HTTPException:
+        conexion.rollback()
+        raise
+
+    except mysql.connector.IntegrityError:
+        conexion.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="La matrícula, el nombre de usuario o el email ya están registrados"
+        )
+
+    except mysql.connector.Error:
+        conexion.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Error al crear el médico y su usuario"
+        )
+
+    finally:
+        cursor.close()
+        conexion.close()        
 # =========================================================
 # COBERTURAS
 # =========================================================
@@ -690,6 +838,219 @@ def obtener_estados_turno():
 # =========================================================
 # TURNOS
 # =========================================================
+# =========================================================
+# HORARIOS DISPONIBLES
+# =========================================================
+
+@app.get("/horarios-disponibles")
+def obtener_horarios_disponibles(
+    id_medico: int,
+    fecha: str
+):
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        # =====================================================
+        # 1. VALIDAR LA FECHA
+        # =====================================================
+
+        try:
+            fecha_obj = datetime.strptime(
+                fecha,
+                "%Y-%m-%d"
+            )
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="La fecha debe tener formato YYYY-MM-DD"
+            )
+
+        # =====================================================
+        # 2. OBTENER EL DÍA DE LA SEMANA
+        # =====================================================
+
+        dias_semana = [
+            "Lunes",
+            "Martes",
+            "Miércoles",
+            "Jueves",
+            "Viernes",
+            "Sábado",
+            "Domingo"
+        ]
+
+        dia_semana = dias_semana[fecha_obj.weekday()]
+
+        # =====================================================
+        # 3. BUSCAR LA AGENDA HABITUAL DEL MÉDICO
+        # =====================================================
+
+        cursor.execute("""
+            SELECT
+                hora_inicio,
+                hora_fin,
+                duracion_turno
+            FROM agenda_medica
+            WHERE id_medico = %s
+              AND dia_semana = %s
+              AND activo = 1
+            LIMIT 1
+        """, (
+            id_medico,
+            dia_semana
+        ))
+
+        agenda = cursor.fetchone()
+
+        # Si el médico no atiende ese día,
+        # simplemente no hay horarios disponibles.
+        if not agenda:
+            return {
+                "id_medico": id_medico,
+                "fecha": fecha,
+                "dia_semana": dia_semana,
+                "horarios": []
+            }
+
+        # =====================================================
+        # 4. GENERAR TODOS LOS HORARIOS POSIBLES
+        # =====================================================
+
+        hora_inicio = datetime.strptime(
+            str(agenda["hora_inicio"]),
+            "%H:%M:%S"
+        )
+
+        hora_fin = datetime.strptime(
+            str(agenda["hora_fin"]),
+            "%H:%M:%S"
+        )
+
+        duracion = agenda["duracion_turno"]
+
+        horarios = []
+
+        hora_actual = hora_inicio
+
+        while hora_actual + timedelta(minutes=duracion) <= hora_fin:
+            horarios.append(
+                hora_actual.strftime("%H:%M")
+            )
+
+            hora_actual += timedelta(
+                minutes=duracion
+            )
+
+        # =====================================================
+        # 5. OBTENER TURNOS YA OCUPADOS
+        # =====================================================
+
+        cursor.execute("""
+            SELECT
+                TIME_FORMAT(hora, '%H:%i') AS hora
+            FROM turno
+            WHERE id_medico = %s
+              AND fecha = %s
+        """, (
+            id_medico,
+            fecha
+        ))
+
+        turnos_ocupados = cursor.fetchall()
+
+        horas_ocupadas = {
+            turno["hora"]
+            for turno in turnos_ocupados
+        }
+
+        # =====================================================
+        # 6. OBTENER BLOQUEOS DE ESE DÍA
+        # =====================================================
+
+        cursor.execute("""
+            SELECT
+                dia_completo,
+                TIME_FORMAT(hora_inicio, '%H:%i') AS hora_inicio,
+                TIME_FORMAT(hora_fin, '%H:%i') AS hora_fin
+            FROM bloqueo_agenda
+            WHERE id_medico = %s
+              AND fecha = %s
+        """, (
+            id_medico,
+            fecha
+        ))
+
+        bloqueos = cursor.fetchall()
+
+        # =====================================================
+        # 7. SI HAY BLOQUEO DE DÍA COMPLETO
+        # =====================================================
+
+        for bloqueo in bloqueos:
+            if bloqueo["dia_completo"]:
+                return {
+                    "id_medico": id_medico,
+                    "fecha": fecha,
+                    "dia_semana": dia_semana,
+                    "horarios": []
+                }
+
+        # =====================================================
+        # 8. QUITAR HORARIOS OCUPADOS Y BLOQUEADOS
+        # =====================================================
+
+        horarios_disponibles = []
+
+        for hora in horarios:
+
+            # Si ya existe un turno en esa hora
+            if hora in horas_ocupadas:
+                continue
+
+            bloqueado = False
+
+            for bloqueo in bloqueos:
+                hora_inicio_bloqueo = bloqueo["hora_inicio"]
+                hora_fin_bloqueo = bloqueo["hora_fin"]
+
+                if (
+                    hora_inicio_bloqueo
+                    and hora_fin_bloqueo
+                    and hora >= hora_inicio_bloqueo
+                    and hora < hora_fin_bloqueo
+                ):
+                    bloqueado = True
+                    break
+
+            if not bloqueado:
+                horarios_disponibles.append(hora)
+
+        # =====================================================
+        # 9. DEVOLVER DISPONIBILIDAD
+        # =====================================================
+
+        return {
+            "id_medico": id_medico,
+            "fecha": fecha,
+            "dia_semana": dia_semana,
+            "duracion_turno": duracion,
+            "horarios": horarios_disponibles
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al obtener horarios disponibles: {error}"
+        )
+
+    finally:
+        cursor.close()
+        conexion.close()
+
 
 @app.get("/turnos")
 def obtener_turnos():
@@ -766,6 +1127,10 @@ def crear_turno(turno: TurnoNuevo):
 
     try:
 
+        # =====================================================
+        # 1. VERIFICICAR QUE EXISTA EL ESTADO
+        # =====================================================
+
         cursor.execute("""
             SELECT id_estado
             FROM estado_turno
@@ -777,12 +1142,15 @@ def crear_turno(turno: TurnoNuevo):
         estado = cursor.fetchone()
 
         if not estado:
-
             raise HTTPException(
                 status_code=400,
                 detail="El estado del turno no existe"
             )
 
+
+        # =====================================================
+        # 2. VERIFICAR QUE NO EXISTA OTRO TURNO
+        # =====================================================
 
         cursor.execute("""
             SELECT id_turno
@@ -799,7 +1167,6 @@ def crear_turno(turno: TurnoNuevo):
         turno_existente = cursor.fetchone()
 
         if turno_existente:
-
             raise HTTPException(
                 status_code=400,
                 detail=(
@@ -808,6 +1175,49 @@ def crear_turno(turno: TurnoNuevo):
                 )
             )
 
+
+        # =====================================================
+        # 3. VERIFICAR SI LA AGENDA ESTÁ BLOQUEADA
+        # =====================================================
+
+        cursor.execute("""
+            SELECT
+                id_bloqueo,
+                motivo
+            FROM bloqueo_agenda
+            WHERE id_medico = %s
+              AND fecha = %s
+              AND (
+                    dia_completo = TRUE
+                    OR (
+                        dia_completo = FALSE
+                        AND %s >= hora_inicio
+                        AND %s < hora_fin
+                    )
+                  )
+            LIMIT 1
+        """, (
+            turno.id_medico,
+            turno.fecha,
+            turno.hora,
+            turno.hora
+        ))
+
+        bloqueo = cursor.fetchone()
+
+        if bloqueo:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "La agenda del médico está bloqueada "
+                    "para esa fecha y horario"
+                )
+            )
+
+
+        # =====================================================
+        # 4. CREAR EL TURNO
+        # =====================================================
 
         cursor.execute("""
             INSERT INTO turno (
@@ -881,6 +1291,10 @@ def modificar_turno(
 
     try:
 
+        # =====================================================
+        # 1. VERIFICAR QUE EXISTA EL ESTADO
+        # =====================================================
+
         cursor.execute("""
             SELECT id_estado
             FROM estado_turno
@@ -892,12 +1306,15 @@ def modificar_turno(
         estado = cursor.fetchone()
 
         if not estado:
-
             raise HTTPException(
                 status_code=400,
                 detail="El estado del turno no existe"
             )
 
+
+        # =====================================================
+        # 2. VERIFICAR QUE NO EXISTA OTRO TURNO
+        # =====================================================
 
         cursor.execute("""
             SELECT id_turno
@@ -916,7 +1333,6 @@ def modificar_turno(
         turno_existente = cursor.fetchone()
 
         if turno_existente:
-
             raise HTTPException(
                 status_code=400,
                 detail=(
@@ -925,6 +1341,49 @@ def modificar_turno(
                 )
             )
 
+
+        # =====================================================
+        # 3. VERIFICAR SI LA AGENDA ESTÁ BLOQUEADA
+        # =====================================================
+
+        cursor.execute("""
+            SELECT
+                id_bloqueo,
+                motivo
+            FROM bloqueo_agenda
+            WHERE id_medico = %s
+              AND fecha = %s
+              AND (
+                    dia_completo = TRUE
+                    OR (
+                        dia_completo = FALSE
+                        AND %s >= hora_inicio
+                        AND %s < hora_fin
+                    )
+                  )
+            LIMIT 1
+        """, (
+            turno.id_medico,
+            turno.fecha,
+            turno.hora,
+            turno.hora
+        ))
+
+        bloqueo = cursor.fetchone()
+
+        if bloqueo:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "La agenda del médico está bloqueada "
+                    "para esa fecha y horario"
+                )
+            )
+
+
+        # =====================================================
+        # 4. MODIFICAR EL TURNO
+        # =====================================================
 
         cursor.execute("""
             UPDATE turno
@@ -951,6 +1410,10 @@ def modificar_turno(
         ))
 
 
+        # =====================================================
+        # 5. VERIFICAR QUE EL TURNO EXISTA
+        # =====================================================
+
         if cursor.rowcount == 0:
 
             cursor.execute("""
@@ -964,7 +1427,6 @@ def modificar_turno(
             existe = cursor.fetchone()
 
             if not existe:
-
                 raise HTTPException(
                     status_code=404,
                     detail="Turno no encontrado"
@@ -977,10 +1439,12 @@ def modificar_turno(
             "mensaje": "Turno modificado correctamente"
         }
 
+
     except HTTPException:
 
         conexion.rollback()
         raise
+
 
     except mysql.connector.Error as error:
 
@@ -991,11 +1455,11 @@ def modificar_turno(
             detail=f"Error al modificar el turno: {error}"
         )
 
+
     finally:
 
         cursor.close()
         conexion.close()
-
 
 # =========================================================
 # RECEPCIÓN
@@ -1537,5 +2001,542 @@ def crear_evolucion(
 
     finally:
 
+        cursor.close()
+        conexion.close()        
+
+# =========================================================
+# BLOQUEO DE AGENDA
+# =========================================================
+
+
+@app.get("/bloqueos-agenda")
+def obtener_bloqueos_agenda():
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT
+                b.id_bloqueo,
+                b.id_medico,
+                CONCAT(m.nombre, ' ', m.apellido) AS medico,
+                b.fecha,
+                TIME_FORMAT(b.hora_inicio, '%H:%i') AS hora_inicio,
+                TIME_FORMAT(b.hora_fin, '%H:%i') AS hora_fin,
+                b.motivo,
+                b.dia_completo,
+                b.fecha_creacion
+            FROM bloqueo_agenda b
+            INNER JOIN medico m
+                ON b.id_medico = m.id_medico
+            ORDER BY b.fecha, b.hora_inicio
+        """)
+
+        return cursor.fetchall()
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+@app.post("/bloqueos-agenda")
+def crear_bloqueo_agenda(bloqueo: BloqueoAgendaNuevo):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        # Verificar que exista el médico
+        cursor.execute("""
+            SELECT id_medico
+            FROM medico
+            WHERE id_medico = %s
+        """, (bloqueo.id_medico,))
+
+        medico = cursor.fetchone()
+
+        if not medico:
+            raise HTTPException(
+                status_code=404,
+                detail="Médico no encontrado"
+            )
+
+        # Si NO es día completo, necesitamos horario
+        if not bloqueo.dia_completo:
+            if not bloqueo.hora_inicio or not bloqueo.hora_fin:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Debe indicar hora de inicio y hora de fin"
+                )
+
+            if bloqueo.hora_inicio >= bloqueo.hora_fin:
+                raise HTTPException(
+                    status_code=400,
+                    detail="La hora de inicio debe ser anterior a la hora de fin"
+                )
+
+        cursor.execute("""
+            INSERT INTO bloqueo_agenda (
+                id_medico,
+                fecha,
+                hora_inicio,
+                hora_fin,
+                motivo,
+                dia_completo
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            bloqueo.id_medico,
+            bloqueo.fecha,
+            None if bloqueo.dia_completo else bloqueo.hora_inicio,
+            None if bloqueo.dia_completo else bloqueo.hora_fin,
+            bloqueo.motivo,
+            bloqueo.dia_completo
+        ))
+
+        conexion.commit()
+
+        return {
+            "mensaje": "Agenda bloqueada correctamente",
+            "id_bloqueo": cursor.lastrowid
+        }
+
+    except HTTPException:
+        conexion.rollback()
+        raise
+
+    except mysql.connector.Error as error:
+        conexion.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al bloquear la agenda: {error}"
+        )
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+@app.delete("/bloqueos-agenda/{id_bloqueo}")
+def eliminar_bloqueo_agenda(id_bloqueo: int):
+
+    conexion = conectar_db()
+    cursor = conexion.cursor()
+
+    try:
+        cursor.execute("""
+            DELETE FROM bloqueo_agenda
+            WHERE id_bloqueo = %s
+        """, (id_bloqueo,))
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Bloqueo no encontrado"
+            )
+
+        conexion.commit()
+
+        return {
+            "mensaje": "Bloqueo de agenda eliminado correctamente"
+        }
+
+    except HTTPException:
+        conexion.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        conexion.close()  
+
+# =====================================================
+# AGENDAS MÉDICAS
+# =====================================================
+
+@app.get("/agendas-medicas")
+def listar_agendas_medicas():
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT
+                a.id_agenda,
+                a.id_medico,
+                CONCAT(m.nombre, ' ', m.apellido) AS medico,
+                a.dia_semana,
+                TIME_FORMAT(a.hora_inicio, '%H:%i') AS hora_inicio,
+                TIME_FORMAT(a.hora_fin, '%H:%i') AS hora_fin,
+                a.duracion_turno,
+                a.activo
+            FROM agenda_medica a
+            INNER JOIN medico m
+                ON a.id_medico = m.id_medico
+            WHERE a.activo = 1
+            ORDER BY
+                a.id_medico,
+                FIELD(
+                    a.dia_semana,
+                    'Lunes',
+                    'Martes',
+                    'Miércoles',
+                    'Jueves',
+                    'Viernes',
+                    'Sábado',
+                    'Domingo'
+                )
+        """)
+
+        agendas = cursor.fetchall()
+
+        return agendas
+
+    finally:
+        cursor.close()
+        conexion.close()  
+
+# =====================================================
+# CREAR AGENDA MÉDICA
+# =====================================================
+
+@app.post("/agendas-medicas")
+def crear_agenda_medica(agenda: AgendaMedicaNueva):
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        # Verificar que el médico exista y esté activo
+        cursor.execute(
+            """
+            SELECT id_medico
+            FROM medico
+            WHERE id_medico = %s
+              AND activo = 1
+            """,
+            (agenda.id_medico,)
+        )
+
+        medico = cursor.fetchone()
+
+        if not medico:
+            raise HTTPException(
+                status_code=404,
+                detail="El médico no existe o está inactivo"
+            )
+
+        # Validar día
+        dias_validos = [
+            "Lunes",
+            "Martes",
+            "Miércoles",
+            "Jueves",
+            "Viernes",
+            "Sábado",
+            "Domingo"
+        ]
+
+        if agenda.dia_semana not in dias_validos:
+            raise HTTPException(
+                status_code=400,
+                detail="El día de la semana no es válido"
+            )
+
+        # Validar horarios
+        if agenda.hora_inicio >= agenda.hora_fin:
+            raise HTTPException(
+                status_code=400,
+                detail="La hora de inicio debe ser anterior a la hora de fin"
+            )
+
+        # Validar duración
+        if agenda.duracion_turno <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="La duración del turno debe ser mayor a 0 minutos"
+            )
+
+        # Evitar dos agendas activas para el mismo médico y día
+        cursor.execute(
+            """
+            SELECT id_agenda
+            FROM agenda_medica
+            WHERE id_medico = %s
+              AND dia_semana = %s
+              AND activo = 1
+            """,
+            (
+                agenda.id_medico,
+                agenda.dia_semana
+            )
+        )
+
+        existente = cursor.fetchone()
+
+        if existente:
+            raise HTTPException(
+                status_code=400,
+                detail="El médico ya tiene una agenda configurada para ese día"
+            )
+
+        # Crear agenda
+        cursor.execute(
+            """
+            INSERT INTO agenda_medica
+            (
+                id_medico,
+                dia_semana,
+                hora_inicio,
+                hora_fin,
+                duracion_turno,
+                activo
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (
+                agenda.id_medico,
+                agenda.dia_semana,
+                agenda.hora_inicio,
+                agenda.hora_fin,
+                agenda.duracion_turno,
+                agenda.activo
+            )
+        )
+
+        conexion.commit()
+
+        return {
+            "mensaje": "Agenda médica creada correctamente",
+            "id_agenda": cursor.lastrowid
+        }
+
+    except HTTPException:
+        conexion.rollback()
+        raise
+
+    except Exception as e:
+        conexion.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+# =====================================================
+# MODIFICAR AGENDA MÉDICA
+# =====================================================
+
+@app.put("/agendas-medicas/{id_agenda}")
+def modificar_agenda_medica(
+    id_agenda: int,
+    agenda: AgendaMedicaNueva
+):
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        # Verificar que la agenda exista
+        cursor.execute(
+            """
+            SELECT id_agenda
+            FROM agenda_medica
+            WHERE id_agenda = %s
+            """,
+            (id_agenda,)
+        )
+
+        existente = cursor.fetchone()
+
+        if not existente:
+            raise HTTPException(
+                status_code=404,
+                detail="La agenda médica no existe"
+            )
+
+        # Verificar médico
+        cursor.execute(
+            """
+            SELECT id_medico
+            FROM medico
+            WHERE id_medico = %s
+              AND activo = 1
+            """,
+            (agenda.id_medico,)
+        )
+
+        medico = cursor.fetchone()
+
+        if not medico:
+            raise HTTPException(
+                status_code=404,
+                detail="El médico no existe o está inactivo"
+            )
+
+        # Validar día
+        dias_validos = [
+            "Lunes",
+            "Martes",
+            "Miércoles",
+            "Jueves",
+            "Viernes",
+            "Sábado",
+            "Domingo"
+        ]
+
+        if agenda.dia_semana not in dias_validos:
+            raise HTTPException(
+                status_code=400,
+                detail="El día de la semana no es válido"
+            )
+
+        # Validar horarios
+        if agenda.hora_inicio >= agenda.hora_fin:
+            raise HTTPException(
+                status_code=400,
+                detail="La hora de inicio debe ser anterior a la hora de fin"
+            )
+
+        # Validar duración
+        if agenda.duracion_turno <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="La duración del turno debe ser mayor a 0 minutos"
+            )
+
+        # Evitar duplicados
+        cursor.execute(
+            """
+            SELECT id_agenda
+            FROM agenda_medica
+            WHERE id_medico = %s
+              AND dia_semana = %s
+              AND activo = 1
+              AND id_agenda <> %s
+            """,
+            (
+                agenda.id_medico,
+                agenda.dia_semana,
+                id_agenda
+            )
+        )
+
+        duplicada = cursor.fetchone()
+
+        if duplicada:
+            raise HTTPException(
+                status_code=400,
+                detail="El médico ya tiene otra agenda activa para ese día"
+            )
+
+        # Actualizar
+        cursor.execute(
+            """
+            UPDATE agenda_medica
+            SET
+                id_medico = %s,
+                dia_semana = %s,
+                hora_inicio = %s,
+                hora_fin = %s,
+                duracion_turno = %s,
+                activo = %s
+            WHERE id_agenda = %s
+            """,
+            (
+                agenda.id_medico,
+                agenda.dia_semana,
+                agenda.hora_inicio,
+                agenda.hora_fin,
+                agenda.duracion_turno,
+                agenda.activo,
+                id_agenda
+            )
+        )
+
+        conexion.commit()
+
+        return {
+            "mensaje": "Agenda médica actualizada correctamente"
+        }
+
+    except HTTPException:
+        conexion.rollback()
+        raise
+
+    except Exception as e:
+        conexion.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+# =====================================================
+# DESACTIVAR AGENDA MÉDICA
+# =====================================================
+
+@app.delete("/agendas-medicas/{id_agenda}")
+def desactivar_agenda_medica(id_agenda: int):
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        # Verificar que exista
+        cursor.execute(
+            """
+            SELECT id_agenda
+            FROM agenda_medica
+            WHERE id_agenda = %s
+            """,
+            (id_agenda,)
+        )
+
+        agenda = cursor.fetchone()
+
+        if not agenda:
+            raise HTTPException(
+                status_code=404,
+                detail="La agenda médica no existe"
+            )
+
+        # Baja lógica
+        cursor.execute(
+            """
+            UPDATE agenda_medica
+            SET activo = 0
+            WHERE id_agenda = %s
+            """,
+            (id_agenda,)
+        )
+
+        conexion.commit()
+
+        return {
+            "mensaje": "Agenda médica desactivada correctamente"
+        }
+
+    except HTTPException:
+        conexion.rollback()
+        raise
+
+    except Exception as e:
+        conexion.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+    finally:
         cursor.close()
         conexion.close()        

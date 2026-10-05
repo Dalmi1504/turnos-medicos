@@ -5,20 +5,24 @@ import MainLayout from "./layouts/MainLayout";
 import MedicoLayout from "./layouts/MedicoLayout";
 
 // SECRETARÍA
-import Dashboard from "./pages/Dashboard";
-import Pacientes from "./pages/Pacientes";
-import Medicos from "./pages/Medicos";
-import Turnos from "./pages/Turnos";
-import Agenda from "./pages/Agenda";
-import HistoriaClinica from "./pages/HistoriaClinica";
-import Coberturas from "./pages/Coberturas";
+import Dashboard from "./pages/secretaria/Dashboard";
+import Pacientes from "./pages/secretaria/Pacientes";
+import Medicos from "./pages/secretaria/Medicos";
+import Turnos from "./pages/secretaria/Turnos";
+import Agenda from "./pages/secretaria/Agenda";
+import HistoriaClinica from "./pages/secretaria/HistoriaClinica";
+import Coberturas from "./pages/secretaria/Coberturas";
 import Usuarios from "./pages/Usuarios";
-import Recepcion from "./pages/Recepcion";
+import Recepcion from "./pages/secretaria/Recepcion";
 
 // MÉDICO
 import DashboardMedico from "./pages/medico/DashboardMedico";
 import AgendaMedico from "./pages/medico/AgendaMedico";
 import HistoriaClinicaMedico from "./pages/medico/HistoriaClinicaMedico";
+
+// ADMINISTRADOR
+import BloqueosAgenda from "./pages/admin/BloqueosAgenda";
+import GestionMedicos from "./pages/admin/GestionMedicos";
 
 function App() {
   return (
@@ -29,7 +33,11 @@ function App() {
             SECRETARÍA
         ========================= */}
         <Route element={<MainLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+
+          <Route
+            path="/dashboard"
+            element={<Dashboard />}
+          />
 
           <Route
             path="/pacientes"
@@ -70,6 +78,21 @@ function App() {
             path="/usuarios"
             element={<Usuarios />}
           />
+
+          {/* =========================
+              ADMINISTRADOR
+          ========================= */}
+
+          <Route
+            path="/admin/bloqueos-agenda"
+            element={<BloqueosAgenda />}
+          />
+
+          <Route
+            path="/admin/gestion-medicos"
+            element={<GestionMedicos />}
+          />
+
         </Route>
 
         {/* =========================

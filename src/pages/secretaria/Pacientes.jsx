@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import "../styles/pacientes.css";
+import "../../styles/pacientes.css";
 
 function Pacientes() {
   const [busqueda, setBusqueda] = useState("");

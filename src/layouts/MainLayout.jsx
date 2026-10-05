@@ -11,6 +11,11 @@ function MainLayout() {
         </div>
 
         <nav className="sidebar-nav">
+
+          {/* =========================
+              SECRETARÍA
+          ========================= */}
+
           <NavLink className="sidebar-link" to="/dashboard">
             Dashboard
           </NavLink>
@@ -42,6 +47,29 @@ function MainLayout() {
           <NavLink className="sidebar-link" to="/coberturas">
             Coberturas
           </NavLink>
+
+          {/* =========================
+              ADMINISTRACIÓN
+          ========================= */}
+
+          <div className="sidebar-section-title">
+            ADMINISTRACIÓN
+          </div>
+
+          <NavLink
+            className="sidebar-link"
+            to="/admin/gestion-medicos"
+          >
+            Gestión de médicos
+          </NavLink>
+
+          <NavLink
+            className="sidebar-link"
+            to="/admin/bloqueos-agenda"
+          >
+            Bloqueos de agenda
+          </NavLink>
+
         </nav>
       </aside>
 

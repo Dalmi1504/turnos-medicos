@@ -1,0 +1,308 @@
+/* =====================================================
+   PÁGINA
+===================================================== */
+
+.bloqueos-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+
+/* =====================================================
+   ENCABEZADO
+===================================================== */
+
+.bloqueos-header {
+  margin-bottom: 24px;
+}
+
+.bloqueos-header h1 {
+  margin: 0;
+  font-size: 32px;
+  color: #1e293b;
+}
+
+.bloqueos-header p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 15px;
+}
+
+
+/* =====================================================
+   TARJETAS
+===================================================== */
+
+.bloqueos-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.bloqueos-card h2 {
+  margin-top: 0;
+  margin-bottom: 22px;
+  color: #1e293b;
+  font-size: 20px;
+}
+
+
+/* =====================================================
+   FORMULARIO
+===================================================== */
+
+.bloqueos-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.bloqueos-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.bloqueos-campo label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.bloqueos-campo input,
+.bloqueos-campo select,
+.bloqueos-campo textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: white;
+  color: #1e293b;
+}
+
+.bloqueos-campo input:focus,
+.bloqueos-campo select:focus,
+.bloqueos-campo textarea:focus {
+  outline: none;
+  border-color: #0284c7;
+}
+
+.bloqueos-campo textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+
+/* =====================================================
+   FECHA + DÍA COMPLETO
+===================================================== */
+
+.fecha-con-dia-completo {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+}
+
+.fecha-con-dia-completo > input[type="date"] {
+  flex: 1;
+  min-width: 0;
+}
+
+
+/* CHECKBOX + TEXTO EN LA MISMA LÍNEA */
+
+.fecha-con-dia-completo .dia-completo-inline {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+
+  width: auto !important;
+  min-width: max-content;
+
+  gap: 7px;
+  margin: 0 !important;
+
+  white-space: nowrap;
+  cursor: pointer;
+
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.fecha-con-dia-completo
+  .dia-completo-inline
+  input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+
+  min-width: 16px;
+  max-width: 16px;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  flex: 0 0 16px;
+
+  cursor: pointer;
+}
+
+
+/* =====================================================
+   MOTIVO
+===================================================== */
+
+.bloqueos-campo-completo {
+  grid-column: 1 / -1;
+}
+
+
+/* =====================================================
+   BOTÓN BLOQUEAR
+===================================================== */
+
+.bloqueos-acciones {
+  grid-column: 1 / -1;
+
+  display: flex;
+  justify-content: flex-end;
+}
+
+.boton-bloquear {
+  border: none;
+  border-radius: 8px;
+
+  padding: 11px 18px;
+
+  background: #0284c7;
+  color: white;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.boton-bloquear:hover {
+  background: #0369a1;
+}
+
+
+/* =====================================================
+   MENSAJES
+===================================================== */
+
+.mensaje-exito {
+  margin-top: 16px;
+  padding: 10px 12px;
+
+  border-radius: 7px;
+
+  background: #ecfdf5;
+  color: #047857;
+
+  font-size: 14px;
+}
+
+.mensaje-error {
+  margin-top: 16px;
+  padding: 10px 12px;
+
+  border-radius: 7px;
+
+  background: #fef2f2;
+  color: #b91c1c;
+
+  font-size: 14px;
+}
+
+
+/* =====================================================
+   TABLA
+===================================================== */
+
+.bloqueos-tabla-contenedor {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.bloqueos-tabla {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bloqueos-tabla th {
+  text-align: left;
+
+  padding: 12px;
+
+  background: #f8fafc;
+  color: #475569;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.bloqueos-tabla td {
+  padding: 14px 12px;
+
+  color: #334155;
+  font-size: 14px;
+
+  border-bottom: 1px solid #e2e8f0;
+}
+
+
+/* =====================================================
+   BOTÓN DESBLOQUEAR
+===================================================== */
+
+.boton-desbloquear {
+  padding: 7px 12px;
+
+  border: 1px solid #ef4444;
+  border-radius: 7px;
+
+  background: white;
+  color: #dc2626;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.boton-desbloquear:hover {
+  background: #fef2f2;
+}
+
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media (max-width: 800px) {
+  .bloqueos-form {
+    grid-template-columns: 1fr;
+  }
+
+  .bloqueos-campo-completo,
+  .bloqueos-acciones {
+    grid-column: 1;
+  }
+
+  .fecha-con-dia-completo {
+    flex-wrap: wrap;
+  }
+}

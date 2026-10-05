@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import "../styles/historiaClinica.css";
+import "../../styles/historiaClinica.css";
+
 
 function HistoriaClinica() {
   const [historias, setHistorias] = useState([]);

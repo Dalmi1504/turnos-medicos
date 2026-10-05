@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import "../styles/recepcion.css";
+import "../../styles/recepcion.css";
 
 function Recepcion() {
   const [busqueda, setBusqueda] = useState("");

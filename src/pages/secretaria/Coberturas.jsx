@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import "../styles/coberturas.css";
+import "../../styles/coberturas.css";
 
 function Coberturas() {
   const [coberturas, setCoberturas] = useState([]);

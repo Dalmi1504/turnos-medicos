@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import "../styles/turnos.css";
+
+import "../../styles/turnos.css";
 
 function Turnos() {
   const [busqueda, setBusqueda] = useState("");
@@ -13,6 +14,10 @@ function Turnos() {
   const [pacientes, setPacientes] = useState([]);
   const [medicos, setMedicos] = useState([]);
   const [estados, setEstados] = useState([]);
+
+  // Horarios calculados según agenda, bloqueos y turnos ocupados
+  const [horariosDisponibles, setHorariosDisponibles] = useState([]);
+  const [cargandoHorarios, setCargandoHorarios] = useState(false);
 
   const [nuevoTurno, setNuevoTurno] = useState({
     id_paciente: "",
@@ -31,6 +36,10 @@ function Turnos() {
     "Postoperatorio",
   ];
 
+  // =========================================================
+  // CARGAR TURNOS
+  // =========================================================
+
   const cargarTurnos = async () => {
     try {
       const respuesta = await fetch(
@@ -47,6 +56,10 @@ function Turnos() {
       console.error("Error al obtener turnos:", error);
     }
   };
+
+  // =========================================================
+  // CARGAR PACIENTES
+  // =========================================================
 
   const cargarPacientes = async () => {
     try {
@@ -70,6 +83,10 @@ function Turnos() {
     }
   };
 
+  // =========================================================
+  // CARGAR MÉDICOS
+  // =========================================================
+
   const cargarMedicos = async () => {
     try {
       const respuesta = await fetch(
@@ -86,6 +103,10 @@ function Turnos() {
       console.error("Error al obtener médicos:", error);
     }
   };
+
+  // =========================================================
+  // CARGAR ESTADOS
+  // =========================================================
 
   const cargarEstados = async () => {
     try {
@@ -106,12 +127,82 @@ function Turnos() {
     }
   };
 
+  // =========================================================
+  // CARGAR HORARIOS DISPONIBLES
+  // =========================================================
+
+  const cargarHorariosDisponibles = async (
+    idMedico,
+    fecha
+  ) => {
+    if (!idMedico || !fecha) {
+      setHorariosDisponibles([]);
+      return;
+    }
+
+    setCargandoHorarios(true);
+
+    try {
+      const respuesta = await fetch(
+        `http://127.0.0.1:8000/horarios-disponibles?id_medico=${idMedico}&fecha=${fecha}`
+      );
+
+      if (!respuesta.ok) {
+        throw new Error(
+          "No se pudieron obtener los horarios disponibles."
+        );
+      }
+
+      const datos = await respuesta.json();
+
+      setHorariosDisponibles(datos.horarios || []);
+    } catch (error) {
+      console.error(
+        "Error al obtener horarios disponibles:",
+        error
+      );
+
+      setHorariosDisponibles([]);
+    } finally {
+      setCargandoHorarios(false);
+    }
+  };
+
+  // =========================================================
+  // CARGA INICIAL
+  // =========================================================
+
   useEffect(() => {
     cargarTurnos();
     cargarPacientes();
     cargarMedicos();
     cargarEstados();
   }, []);
+
+  // =========================================================
+  // ACTUALIZAR HORARIOS AL CAMBIAR MÉDICO O FECHA
+  // =========================================================
+
+  useEffect(() => {
+    if (
+      nuevoTurno.id_medico &&
+      nuevoTurno.fecha
+    ) {
+      cargarHorariosDisponibles(
+        nuevoTurno.id_medico,
+        nuevoTurno.fecha
+      );
+    } else {
+      setHorariosDisponibles([]);
+    }
+  }, [
+    nuevoTurno.id_medico,
+    nuevoTurno.fecha,
+  ]);
+
+  // =========================================================
+  // BÚSQUEDA
+  // =========================================================
 
   const normalizarTexto = (texto) => {
     return String(texto || "")
@@ -131,20 +222,33 @@ function Turnos() {
     );
   });
 
+  // =========================================================
+  // CAMBIOS DEL FORMULARIO
+  // =========================================================
+
   const manejarCambio = (evento) => {
     const { name, value } = evento.target;
 
-    setNuevoTurno({
-      ...nuevoTurno,
+    setNuevoTurno((turnoActual) => ({
+      ...turnoActual,
       [name]: value,
-    });
 
-    setErrores({
-      ...errores,
+      // Si cambia médico o fecha, borramos la hora anterior
+      ...(name === "id_medico" || name === "fecha"
+        ? { hora: "" }
+        : {}),
+    }));
+
+    setErrores((erroresActuales) => ({
+      ...erroresActuales,
       [name]: "",
       turno: "",
-    });
+    }));
   };
+
+  // =========================================================
+  // VALIDACIONES
+  // =========================================================
 
   const validarFormulario = () => {
     const nuevosErrores = {};
@@ -167,14 +271,7 @@ function Turnos() {
     }
 
     if (!nuevoTurno.hora) {
-      nuevosErrores.hora = "Ingresá un horario.";
-    } else {
-      const formatoHora = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-      if (!formatoHora.test(nuevoTurno.hora)) {
-        nuevosErrores.hora =
-          "Ingresá la hora con formato HH:MM. Ej: 14:30.";
-      }
+      nuevosErrores.hora = "Seleccioná un horario disponible.";
     }
 
     if (!nuevoTurno.estado) {
@@ -200,6 +297,10 @@ function Turnos() {
     return Object.keys(nuevosErrores).length === 0;
   };
 
+  // =========================================================
+  // NUEVO TURNO
+  // =========================================================
+
   const abrirNuevoTurno = () => {
     setIdEditando(null);
 
@@ -216,19 +317,26 @@ function Turnos() {
       observaciones: "",
     });
 
+    setHorariosDisponibles([]);
     setErrores({});
     setMostrarFormulario(true);
   };
 
+  // =========================================================
+  // EDITAR TURNO
+  // =========================================================
+
   const editarTurno = (turno) => {
     setIdEditando(turno.id_turno);
+
+    const horaActual = String(turno.hora || "").slice(0, 5);
 
     setNuevoTurno({
       id_paciente: String(turno.id_paciente),
       id_medico: String(turno.id_medico),
       motivo_consulta: turno.motivo_consulta || "",
       fecha: turno.fecha || "",
-      hora: String(turno.hora || "").slice(0, 5),
+      hora: horaActual,
       estado: turno.estado || "",
       observaciones: turno.observaciones || "",
     });
@@ -236,6 +344,10 @@ function Turnos() {
     setErrores({});
     setMostrarFormulario(true);
   };
+
+  // =========================================================
+  // CERRAR FORMULARIO
+  // =========================================================
 
   const cerrarFormulario = () => {
     setMostrarFormulario(false);
@@ -251,8 +363,13 @@ function Turnos() {
       observaciones: "",
     });
 
+    setHorariosDisponibles([]);
     setErrores({});
   };
+
+  // =========================================================
+  // GUARDAR TURNO
+  // =========================================================
 
   const guardarTurno = async (evento) => {
     evento.preventDefault();
@@ -313,12 +430,16 @@ function Turnos() {
     } catch (error) {
       console.error("Error al guardar turno:", error);
 
-      setErrores({
-        ...errores,
+      setErrores((erroresActuales) => ({
+        ...erroresActuales,
         turno: error.message,
-      });
+      }));
     }
   };
+
+  // =========================================================
+  // CANCELAR TURNO
+  // =========================================================
 
   const cancelarTurno = async (turno) => {
     const confirmar = window.confirm(
@@ -367,8 +488,13 @@ function Turnos() {
     }
   };
 
+  // =========================================================
+  // VER TURNO
+  // =========================================================
+
   const verTurno = (turno) => {
     setTurnoSeleccionado(turno);
+
     setObservacionTemporal(
       turno.observaciones || ""
     );
@@ -378,6 +504,10 @@ function Turnos() {
     setTurnoSeleccionado(null);
     setObservacionTemporal("");
   };
+
+  // =========================================================
+  // GUARDAR OBSERVACIÓN
+  // =========================================================
 
   const guardarObservacion = async () => {
     if (!turnoSeleccionado) {
@@ -480,6 +610,9 @@ function Turnos() {
           </div>
 
           <div className="turno-form-grid">
+
+            {/* PACIENTE */}
+
             <div className="turno-form-group">
               <label htmlFor="id_paciente">
                 Paciente
@@ -512,6 +645,8 @@ function Turnos() {
                 </span>
               )}
             </div>
+
+            {/* MÉDICO */}
 
             <div className="turno-form-group">
               <label htmlFor="id_medico">
@@ -546,6 +681,8 @@ function Turnos() {
               )}
             </div>
 
+            {/* TIPO DE TURNO */}
+
             <div className="turno-form-group">
               <label htmlFor="motivo_consulta">
                 Tipo de turno
@@ -578,6 +715,8 @@ function Turnos() {
               )}
             </div>
 
+            {/* FECHA */}
+
             <div className="turno-form-group">
               <label htmlFor="fecha">
                 Fecha
@@ -598,19 +737,45 @@ function Turnos() {
               )}
             </div>
 
+            {/* HORARIO DISPONIBLE */}
+
             <div className="turno-form-group">
               <label htmlFor="hora">
-                Hora
+                Hora disponible
               </label>
 
-              <input
+              <select
                 id="hora"
                 name="hora"
-                type="text"
-                placeholder="Ej: 14:30"
                 value={nuevoTurno.hora}
                 onChange={manejarCambio}
-              />
+                disabled={
+                  !nuevoTurno.id_medico ||
+                  !nuevoTurno.fecha ||
+                  cargandoHorarios
+                }
+              >
+                <option value="">
+                  {!nuevoTurno.id_medico
+                    ? "Primero seleccioná un médico"
+                    : !nuevoTurno.fecha
+                    ? "Primero seleccioná una fecha"
+                    : cargandoHorarios
+                    ? "Buscando horarios..."
+                    : horariosDisponibles.length === 0
+                    ? "No hay horarios disponibles"
+                    : "Seleccionar horario"}
+                </option>
+
+                {horariosDisponibles.map((hora) => (
+                  <option
+                    key={hora}
+                    value={hora}
+                  >
+                    {hora}
+                  </option>
+                ))}
+              </select>
 
               {errores.hora && (
                 <span className="turno-error">
@@ -618,6 +783,8 @@ function Turnos() {
                 </span>
               )}
             </div>
+
+            {/* ESTADO */}
 
             <div className="turno-form-group">
               <label htmlFor="estado">
@@ -651,6 +818,8 @@ function Turnos() {
               )}
             </div>
           </div>
+
+          {/* OBSERVACIONES */}
 
           <div className="turno-form-group">
             <label htmlFor="observaciones-form">
@@ -694,6 +863,8 @@ function Turnos() {
         </form>
       )}
 
+      {/* BUSCADOR */}
+
       <div className="turnos-search-container">
         <input
           type="text"
@@ -705,6 +876,8 @@ function Turnos() {
           }
         />
       </div>
+
+      {/* TABLA */}
 
       <div className="turnos-table-container">
         <table className="turnos-table">
@@ -727,9 +900,11 @@ function Turnos() {
                 <td>{turno.medico}</td>
                 <td>{turno.motivo_consulta}</td>
                 <td>{turno.fecha}</td>
+
                 <td>
                   {String(turno.hora).slice(0, 5)}
                 </td>
+
                 <td>{turno.estado}</td>
 
                 <td>
@@ -779,9 +954,12 @@ function Turnos() {
         </table>
       </div>
 
+      {/* MODAL DETALLE */}
+
       {turnoSeleccionado && (
         <div className="turno-modal-overlay">
           <div className="turno-modal">
+
             <div className="turno-modal-header">
               <div>
                 <h2>Detalle del turno</h2>
@@ -798,6 +976,7 @@ function Turnos() {
             </div>
 
             <div className="turno-detalle-grid">
+
               <div className="turno-detalle-item">
                 <span>Paciente</span>
                 <strong>
