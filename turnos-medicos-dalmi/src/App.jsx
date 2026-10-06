@@ -16,11 +16,13 @@ import Registro from "./pages/Registro";
 import PortalPaciente from "./pages/PortalPaciente";
 import MisTurnosPaciente from "./pages/MisTurnosPaciente";
 import SolicitarTurnoPaciente from "./pages/SolicitarTurnoPaciente";
+import RecuperarPassword from './pages/RecuperarPassword';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/recuperar-password" element={<RecuperarPassword />} />
         {/* Ruta pública del Login (fuera del MainLayout para que no muestre la barra lateral) */}
         <Route path="/login" element={<Login />} />
         

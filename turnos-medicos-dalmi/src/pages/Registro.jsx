@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
 function Registro() {
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nombre, setNombre] = useState('');
@@ -18,11 +17,16 @@ function Registro() {
     setError('');
     setExito('');
 
+    if (password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
     try {
       const respuesta = await fetch('http://127.0.0.1:8000/api/registro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password, nombre, apellido, dni, telefono }),
+        body: JSON.stringify({ email, password, nombre, apellido, dni, telefono }),
       });
 
       const data = await respuesta.json();
@@ -64,17 +68,12 @@ function Registro() {
         </div>
 
         <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', marginBottom: '4px' }}>Usuario:</label>
-          <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
-        </div>
-
-        <div style={{ marginBottom: '12px' }}>
           <label style={{ display: 'block', marginBottom: '4px' }}>Correo electrónico:</label>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
         </div>
 
         <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '4px' }}>Contraseña:</label>
+          <label style={{ display: 'block', marginBottom: '4px' }}>Contraseña (mínimo 6 caracteres):</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
         </div>
 
