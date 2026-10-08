@@ -1,0 +1,65 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+function MisTurnosPaciente() {
+  const navigate = useNavigate();
+  const usuarioGuardado = JSON.parse(localStorage.getItem('usuario')) || {};
+  const [turnos, setTurnos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    const obtenerTurnos = async () => {
+      try {
+        const idPaciente = usuarioGuardado.id_paciente || usuarioGuardado.id_usuario;
+        if (!idPaciente) {
+          setCargando(false);
+          return;
+        }
+        
+        const respuesta = await fetch(`http://127.0.0.1:8000/api/turnos/usuario/${idPaciente}`);
+        const data = await respuesta.json();
+
+        if (respuesta.ok) {
+          setTurnos(data);
+        }
+      } catch (err) {
+        console.error('Error al cargar turnos:', err);
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    obtenerTurnos();
+  }, [usuarioGuardado]);
+
+  return (
+    <div style={{ maxWidth: '800px', margin: '40px auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #ddd', paddingBottom: '15px', marginBottom: '20px' }}>
+        <h2>Mis Turnos Reservados</h2>
+        <button onClick={() => navigate('/portal-paciente')} style={{ padding: '8px 15px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+          ← Volver al Portal
+        </button>
+      </div>
+
+      <div style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px', background: '#fff' }}>
+        {cargando ? (
+          <p>Cargando turnos...</p>
+        ) : turnos.length === 0 ? (
+          <p style={{ color: '#666' }}>No tienes turnos activos registrados en este momento.</p>
+        ) : (
+          <ul style={{ listStyle: 'none', padding: 0 }}>
+            {turnos.map((t, index) => (
+              <li key={index} style={{ padding: '15px', borderBottom: '1px solid #eee', marginBottom: '10px', background: '#f9f9f9', borderRadius: '6px' }}>
+                <p><strong>Fecha:</strong> {t.fecha} | <strong>Hora:</strong> {t.hora}</p>
+                <p><strong>Motivo de consulta:</strong> {t.motivo_consulta || 'Sin observaciones'}</p>
+                <p><strong>Estado:</strong> <span style={{ color: '#28a745', fontWeight: 'bold' }}>Pendiente / Programado</span></p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default MisTurnosPaciente;
