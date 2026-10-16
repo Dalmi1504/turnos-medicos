@@ -1,6 +1,21 @@
-import { NavLink, Outlet } from "react-router-dom";
+
+import { NavLink, Outlet, Navigate } from "react-router-dom";
 
 function MedicoLayout() {
+  // Recuperamos el usuario guardado al iniciar sesión
+  let usuario = null;
+
+  try {
+    usuario = JSON.parse(localStorage.getItem("usuario"));
+  } catch {
+    usuario = null;
+  }
+
+  // Comprobación provisoria del frontend
+  if (!usuario || !usuario.roles?.includes("Médico")) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
     <div className="app-layout">
       <aside className="sidebar">
@@ -33,7 +48,7 @@ function MedicoLayout() {
         </nav>
 
         <div className="sidebar-user">
-          <strong>Laura Gomez</strong>
+          <strong>{usuario.username}</strong>
           <span>Médico</span>
         </div>
       </aside>

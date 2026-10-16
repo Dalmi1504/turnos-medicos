@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import "../../styles/historiaClinica.css";
 
@@ -8,9 +9,21 @@ function HistoriaClinicaMedico() {
   const [evoluciones, setEvoluciones] = useState([]);
   const [pestana, setPestana] = useState("resumen");
   const [mensaje, setMensaje] = useState("");
+  const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
 
-  // TEMPORAL hasta implementar login
-  const ID_MEDICO_ACTUAL = 2;
+  // =========================
+  // MÉDICO QUE INICIÓ SESIÓN
+  // =========================
+  let usuario = null;
+
+  try {
+    usuario = JSON.parse(localStorage.getItem("usuario"));
+  } catch {
+    usuario = null;
+  }
+
+  const ID_MEDICO_ACTUAL = Number(usuario?.id_medico);
 
   const [formulario, setFormulario] = useState({
     descripcion: "",
@@ -23,25 +36,33 @@ function HistoriaClinicaMedico() {
   // CARGAR HISTORIAS
   // =========================
   useEffect(() => {
-    cargarHistorias();
-  }, []);
-
-  const cargarHistorias = async () => {
-    try {
-      const respuesta = await fetch(
-        "http://127.0.0.1:8000/historias-clinicas"
-      );
-
-      if (!respuesta.ok) {
-        throw new Error("Error al obtener historias clínicas");
-      }
-
-      const datos = await respuesta.json();
-      setHistorias(datos);
-    } catch (error) {
-      console.error(error);
+    if (!ID_MEDICO_ACTUAL) {
+      setError("No se encontró un médico asociado a tu usuario.");
+      return;
     }
-  };
+
+    const cargarHistorias = async () => {
+      try {
+        setError("");
+
+        const respuesta = await fetch(
+          "http://127.0.0.1:8000/historias-clinicas"
+        );
+
+        if (!respuesta.ok) {
+          throw new Error("Error al obtener historias clínicas");
+        }
+
+        const datos = await respuesta.json();
+        setHistorias(datos);
+      } catch (err) {
+        console.error(err);
+        setError(err.message);
+      }
+    };
+
+    cargarHistorias();
+  }, [ID_MEDICO_ACTUAL]);
 
   // =========================
   // NORMALIZAR TEXTO
@@ -66,6 +87,8 @@ function HistoriaClinicaMedico() {
   // =========================
   const verHistoria = async (idPaciente) => {
     try {
+      setError("");
+
       const respuesta = await fetch(
         `http://127.0.0.1:8000/historias-clinicas/paciente/${idPaciente}`
       );
@@ -79,10 +102,12 @@ function HistoriaClinicaMedico() {
       setHistoriaSeleccionada(datos);
       setPestana("resumen");
       setMensaje("");
+      setEvoluciones([]);
 
       await cargarEvoluciones(datos.id_hc);
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
     }
   };
 
@@ -101,8 +126,9 @@ function HistoriaClinicaMedico() {
 
       const datos = await respuesta.json();
       setEvoluciones(datos);
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
     }
   };
 
@@ -123,6 +149,17 @@ function HistoriaClinicaMedico() {
   // =========================
   const guardarEvolucion = async (e) => {
     e.preventDefault();
+    setMensaje("");
+
+    if (!ID_MEDICO_ACTUAL) {
+      setMensaje("No se encontró un médico asociado a tu usuario.");
+      return;
+    }
+
+    if (!historiaSeleccionada?.id_hc) {
+      setMensaje("Seleccioná una historia clínica válida.");
+      return;
+    }
 
     if (!formulario.descripcion.trim()) {
       setMensaje("La descripción de la evolución es obligatoria.");
@@ -130,6 +167,8 @@ function HistoriaClinicaMedico() {
     }
 
     try {
+      setGuardando(true);
+
       const respuesta = await fetch(
         "http://127.0.0.1:8000/evoluciones",
         {
@@ -169,9 +208,11 @@ function HistoriaClinicaMedico() {
 
       await cargarEvoluciones(historiaSeleccionada.id_hc);
       setPestana("evoluciones");
-    } catch (error) {
-      console.error(error);
-      setMensaje(error.message);
+    } catch (err) {
+      console.error(err);
+      setMensaje(err.message);
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -182,6 +223,10 @@ function HistoriaClinicaMedico() {
         <h1>Historia clínica</h1>
         <p>Consulta y registro de evoluciones de pacientes.</p>
       </div>
+
+      {error && (
+        <div className="historia-mensaje">{error}</div>
+      )}
 
       {!historiaSeleccionada ? (
         <>
@@ -254,6 +299,7 @@ function HistoriaClinicaMedico() {
               setHistoriaSeleccionada(null);
               setEvoluciones([]);
               setMensaje("");
+              setError("");
             }}
           >
             ← Volver a pacientes
@@ -273,7 +319,9 @@ function HistoriaClinicaMedico() {
 
             <div className="historia-dato">
               <span>DNI</span>
-              <strong>{historiaSeleccionada.dni || "-"}</strong>
+              <strong>
+                {historiaSeleccionada.dni || "-"}
+              </strong>
             </div>
           </div>
 
@@ -338,7 +386,6 @@ function HistoriaClinicaMedico() {
 
               <div className="historia-card historia-card-observaciones">
                 <h3>Observaciones generales</h3>
-
                 <p>
                   {historiaSeleccionada.observaciones_generales ||
                     "Sin observaciones registradas."}
@@ -422,6 +469,7 @@ function HistoriaClinicaMedico() {
                     onChange={cambiarFormulario}
                     placeholder="Descripción de la evolución del paciente..."
                     rows="4"
+                    required
                   />
                 </div>
 
@@ -461,8 +509,11 @@ function HistoriaClinicaMedico() {
                 <button
                   className="historia-btn-primary"
                   type="submit"
+                  disabled={guardando || !ID_MEDICO_ACTUAL}
                 >
-                  Guardar evolución
+                  {guardando
+                    ? "Guardando..."
+                    : "Guardar evolución"}
                 </button>
 
                 {mensaje && (

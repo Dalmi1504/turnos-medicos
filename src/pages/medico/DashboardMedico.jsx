@@ -1,23 +1,35 @@
+
 import { useEffect, useMemo, useState } from "react";
 import "../../styles/dashboard.css";
 
 function DashboardMedico() {
   const [turnos, setTurnos] = useState([]);
-
-  // TEMPORAL:
-  // Hasta que hagamos login, simulamos que inició sesión el médico con ID 2.
-  const ID_MEDICO_ACTUAL = 2;
+  const [nombreMedico, setNombreMedico] = useState("Médico");
 
   // =========================
-  // CARGAR TURNOS
+  // USUARIO QUE INICIÓ SESIÓN
+  // =========================
+  let usuario = null;
+
+  try {
+    usuario = JSON.parse(localStorage.getItem("usuario"));
+  } catch {
+    usuario = null;
+  }
+
+  const ID_MEDICO_ACTUAL = Number(usuario?.id_medico);
+
+  // =========================
+  // CARGAR TURNOS Y MÉDICOS
   // =========================
   useEffect(() => {
+    if (!ID_MEDICO_ACTUAL) return;
+
     fetch("http://127.0.0.1:8000/turnos")
       .then((respuesta) => {
         if (!respuesta.ok) {
           throw new Error("Error al obtener los turnos");
         }
-
         return respuesta.json();
       })
       .then((datos) => {
@@ -26,13 +38,35 @@ function DashboardMedico() {
       .catch((error) => {
         console.error(error);
       });
-  }, []);
+
+    fetch("http://127.0.0.1:8000/medicos")
+      .then((respuesta) => {
+        if (!respuesta.ok) {
+          throw new Error("Error al obtener los médicos");
+        }
+        return respuesta.json();
+      })
+      .then((medicos) => {
+        const medicoActual = medicos.find(
+          (medico) =>
+            Number(medico.id_medico) === ID_MEDICO_ACTUAL
+        );
+
+        if (medicoActual) {
+          setNombreMedico(
+            `${medicoActual.nombre} ${medicoActual.apellido}`
+          );
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }, [ID_MEDICO_ACTUAL]);
 
   // =========================
   // FECHA Y SALUDO
   // =========================
   const fechaHoy = new Date();
-
   const horaActual = fechaHoy.getHours();
 
   let saludo = "Buen día";
@@ -43,7 +77,11 @@ function DashboardMedico() {
     saludo = "Buenas noches";
   }
 
-  const fechaHoyFormato = fechaHoy.toLocaleDateString("en-CA");
+  const fechaHoyFormato = [
+    fechaHoy.getFullYear(),
+    String(fechaHoy.getMonth() + 1).padStart(2, "0"),
+    String(fechaHoy.getDate()).padStart(2, "0"),
+  ].join("-");
 
   const fechaVisible = fechaHoy.toLocaleDateString("es-AR", {
     weekday: "long",
@@ -63,15 +101,7 @@ function DashboardMedico() {
           Number(turno.id_medico) === ID_MEDICO_ACTUAL
       )
       .sort((a, b) => a.hora.localeCompare(b.hora));
-  }, [turnos, fechaHoyFormato]);
-
-  // =========================
-  // NOMBRE DEL MÉDICO
-  // =========================
-  const nombreMedico =
-    turnos.find(
-      (turno) => Number(turno.id_medico) === ID_MEDICO_ACTUAL
-    )?.medico || "Médico";
+  }, [turnos, fechaHoyFormato, ID_MEDICO_ACTUAL]);
 
   // =========================
   // RESUMEN

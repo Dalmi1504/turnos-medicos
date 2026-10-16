@@ -1,7 +1,38 @@
-import { NavLink, Outlet } from "react-router-dom";
+
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import "../styles/layout.css";
 
 function MainLayout() {
+  const navigate = useNavigate();
+
+  // Obtener el usuario que inició sesión
+  let usuario = null;
+
+  try {
+    usuario = JSON.parse(localStorage.getItem("usuario"));
+  } catch {
+    usuario = null;
+  }
+
+  const roles = usuario?.roles || [];
+
+  const esAdministrador = roles.includes("Administrador");
+
+  const nombreUsuario =
+    usuario?.username || "Usuario";
+
+  const rolVisible = esAdministrador
+    ? "Administrador"
+    : "Secretaria";
+
+  // Cerrar sesión
+  const cerrarSesion = () => {
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("access_token");
+
+    navigate("/login", { replace: true });
+  };
+
   return (
     <div className="app-layout">
       <aside className="sidebar">
@@ -12,9 +43,7 @@ function MainLayout() {
 
         <nav className="sidebar-nav">
 
-          {/* =========================
-              SECRETARÍA
-          ========================= */}
+          {/* SECRETARÍA Y ADMINISTRACIÓN */}
 
           <NavLink className="sidebar-link" to="/dashboard">
             Dashboard
@@ -40,7 +69,10 @@ function MainLayout() {
             Recepción
           </NavLink>
 
-          <NavLink className="sidebar-link" to="/historia-clinica">
+          <NavLink
+            className="sidebar-link"
+            to="/historia-clinica"
+          >
             Historia clínica
           </NavLink>
 
@@ -48,29 +80,59 @@ function MainLayout() {
             Coberturas
           </NavLink>
 
-          {/* =========================
-              ADMINISTRACIÓN
-          ========================= */}
+          {/* SOLO ADMINISTRADOR */}
 
-          <div className="sidebar-section-title">
-            ADMINISTRACIÓN
-          </div>
+          {esAdministrador && (
+            <>
+              <div className="sidebar-section-title">
+                ADMINISTRACIÓN
+              </div>
 
-          <NavLink
-            className="sidebar-link"
-            to="/admin/gestion-medicos"
-          >
-            Gestión de médicos
-          </NavLink>
+              <NavLink
+                className="sidebar-link"
+                to="/admin/gestion-medicos"
+              >
+                Gestión de médicos
+              </NavLink>
 
-          <NavLink
-            className="sidebar-link"
-            to="/admin/bloqueos-agenda"
-          >
-            Bloqueos de agenda
-          </NavLink>
+              <NavLink
+                className="sidebar-link"
+                to="/admin/bloqueos-agenda"
+              >
+                Bloqueos de agenda
+              </NavLink>
+
+              <NavLink
+                className="sidebar-link"
+                to="/usuarios"
+              >
+                Usuarios
+              </NavLink>
+            </>
+          )}
 
         </nav>
+
+        {/* CERRAR SESIÓN */}
+
+        <button
+          type="button"
+          onClick={cerrarSesion}
+          className="sidebar-link"
+          style={{
+            marginTop: "24px",
+            width: "100%",
+            textAlign: "left",
+            cursor: "pointer",
+            background: "transparent",
+            border: "none",
+            color: "inherit",
+            padding: "12px 16px",
+          }}
+        >
+          Cerrar sesión
+        </button>
+
       </aside>
 
       <div className="main-container">
@@ -81,8 +143,8 @@ function MainLayout() {
           </div>
 
           <div className="header-user">
-            <strong>Dalma Lening</strong>
-            <span>Secretaria</span>
+            <strong>{nombreUsuario}</strong>
+            <span>{rolVisible}</span>
           </div>
         </header>
 

@@ -1,10 +1,134 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 import mysql.connector
 import bcrypt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import os
+import jwt
+from dotenv import load_dotenv
+from pathlib import Path
+
+# =========================================================
+# CONFIGURACIÓN DE SEGURIDAD JWT 9-10
+# =========================================================
+
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+
+if not JWT_SECRET_KEY:
+    raise RuntimeError("Falta configurar JWT_SECRET_KEY en el archivo .env")
+
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_MINUTES = 60
+seguridad_jwt = HTTPBearer(auto_error=False)
+
+def crear_token(usuario):
+    fecha_expiracion = datetime.now(timezone.utc) + timedelta(
+        minutes=JWT_EXPIRATION_MINUTES
+    )
+
+    datos_token = {
+        "sub": str(usuario["id_usuario"]),
+        "exp": fecha_expiracion
+    }
+
+    token = jwt.encode(
+        datos_token,
+        JWT_SECRET_KEY,
+        algorithm=JWT_ALGORITHM
+    )
+
+    return token
+
+def obtener_usuario_actual(
+    credenciales: HTTPAuthorizationCredentials = Depends(seguridad_jwt)
+):
+    # Comprobar que se haya enviado un token
+    if credenciales is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Debés iniciar sesión"
+        )
+
+    # Verificar la firma y la fecha de vencimiento
+    try:
+        datos_token = jwt.decode(
+            credenciales.credentials,
+            JWT_SECRET_KEY,
+            algorithms=[JWT_ALGORITHM]
+        )
+
+        id_usuario = int(datos_token["sub"])
+
+    except (jwt.InvalidTokenError, ValueError, KeyError, TypeError):
+        raise HTTPException(
+            status_code=401,
+            detail="Sesión inválida o vencida"
+        )
+
+    # Buscar el usuario en MySQL
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT id_usuario, username, email,
+                   id_paciente, id_medico
+            FROM usuario
+            WHERE id_usuario = %s AND activo = 1
+        """, (id_usuario,))
+
+        usuario = cursor.fetchone()
+
+        if not usuario:
+            raise HTTPException(
+                status_code=401,
+                detail="Usuario inexistente o inactivo"
+            )
+
+        # Consultar los roles actuales
+        cursor.execute("""
+            SELECT r.descripcion
+            FROM usuario_rol ur
+            INNER JOIN rol r ON ur.id_rol = r.id_rol
+            WHERE ur.id_usuario = %s
+        """, (id_usuario,))
+
+        usuario["roles"] = [
+            fila["descripcion"]
+            for fila in cursor.fetchall()
+        ]
+
+        return usuario
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+def verificar_roles(*roles_permitidos):
+
+    def comprobar_permisos(
+        usuario=Depends(obtener_usuario_actual)
+    ):
+        roles_usuario = usuario.get("roles", [])
+
+        if not any(
+            rol in roles_permitidos
+            for rol in roles_usuario
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="No tenés permisos para realizar esta operación"
+            )
+
+        return usuario
+
+    return comprobar_permisos
+
 
 
 # =========================================================
@@ -21,7 +145,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/api/mi-sesion")
+def consultar_mi_sesion(
+    usuario=Depends(obtener_usuario_actual)
+):
+    return {
+        "mensaje": "Sesión válida",
+        "usuario": usuario
+    }
 
+@app.get("/api/prueba-medico")
+def prueba_permiso_medico(
+    usuario=Depends(verificar_roles("Médico"))
+):
+    return {
+        "mensaje": "Acceso permitido para médicos",
+        "usuario": usuario["username"],
+        "id_medico": usuario["id_medico"]
+    }
 # =========================================================
 # CONEXIÓN A MYSQL
 # =========================================================
@@ -40,6 +181,10 @@ def conectar_db():
 # =========================================================
 # MODELOS
 # =========================================================
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 class PacienteNuevo(BaseModel):
     dni: str
@@ -142,16 +287,77 @@ class AgendaMedicaNueva(BaseModel):
     hora_fin: str
     duracion_turno: int
     activo: bool = True
+
+
 # =========================================================
-# INICIO
+# LOGIN DE USUARIOS
 # =========================================================
 
-@app.get("/")
-def inicio():
-    return {
-        "mensaje": "API del sistema de turnos funcionando"
-    }
+@app.post("/api/login")
+def login_usuario(datos: LoginRequest):
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
 
+    try:
+        # Buscar usuario activo por correo electrónico
+        cursor.execute("""
+            SELECT id_usuario, username, email, password,
+                   id_paciente, id_medico
+            FROM usuario
+            WHERE email = %s AND activo = 1
+        """, (datos.email,))
+
+        usuario = cursor.fetchone()
+
+        # Comprobar la contraseña usando bcrypt
+        password_valida = False
+
+        if usuario:
+            try:
+                password_valida = bcrypt.checkpw(
+                    datos.password.encode("utf-8"),
+                    usuario["password"].encode("utf-8")
+                )
+            except (ValueError, TypeError):
+                password_valida = False
+
+        if not password_valida:
+            raise HTTPException(
+                status_code=401,
+                detail="Correo o contraseña incorrectos"
+            )
+
+        # Obtener los roles asignados al usuario
+        cursor.execute("""
+            SELECT r.descripcion
+            FROM usuario_rol ur
+            INNER JOIN rol r ON ur.id_rol = r.id_rol
+            WHERE ur.id_usuario = %s
+        """, (usuario["id_usuario"],))
+
+        roles = [fila["descripcion"] for fila in cursor.fetchall()]
+
+        # Generar token JWT para el usuario autenticado
+        token = crear_token(usuario)
+
+        # Devolver el token y los datos del usuario
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "mensaje": "Credenciales verificadas",
+            "usuario": {
+                "id_usuario": usuario["id_usuario"],
+                "username": usuario["username"],
+                "email": usuario["email"],
+                "id_paciente": usuario["id_paciente"],
+                "id_medico": usuario["id_medico"],
+                "roles": roles
+            }
+        }
+
+    finally:
+        cursor.close()
+        conexion.close()
 
 # =========================================================
 # PACIENTES
@@ -1276,6 +1482,305 @@ def crear_turno(turno: TurnoNuevo):
 
     finally:
 
+        cursor.close()
+        conexion.close()
+
+
+# =========================================================
+# PORTAL PACIENTE - SOLICITAR TURNO
+# =========================================================
+
+class TurnoPacienteNuevo(BaseModel):
+    id_medico: int
+    fecha: str
+    hora: str
+    motivo_consulta: str
+
+
+@app.get("/api/paciente/mis-turnos")
+def obtener_mis_turnos(
+    usuario=Depends(verificar_roles("Paciente"))
+):
+    id_paciente = usuario.get("id_paciente")
+
+    if not id_paciente:
+        raise HTTPException(
+            status_code=403,
+            detail="El usuario no tiene un paciente asociado"
+        )
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT
+                t.id_turno,
+                DATE_FORMAT(t.fecha, '%Y-%m-%d') AS fecha,
+                TIME_FORMAT(t.hora, '%H:%i') AS hora,
+                t.motivo_consulta,
+                CONCAT(m.nombre, ' ', m.apellido) AS medico,
+                e.descripcion AS estado
+            FROM turno t
+            INNER JOIN medico m
+                ON t.id_medico = m.id_medico
+            INNER JOIN estado_turno e
+                ON t.id_estado = e.id_estado
+            WHERE t.id_paciente = %s
+            ORDER BY t.fecha DESC, t.hora DESC
+        """, (id_paciente,))
+
+        return cursor.fetchall()
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+@app.post("/api/paciente/turnos", status_code=201)
+def solicitar_turno_paciente(
+    datos: TurnoPacienteNuevo,
+    usuario=Depends(verificar_roles("Paciente"))
+):
+    id_paciente = usuario.get("id_paciente")
+
+    if not id_paciente:
+        raise HTTPException(
+            status_code=403,
+            detail="El usuario no tiene un paciente asociado"
+        )
+
+    # Validar fecha y hora
+    try:
+        fecha_turno = datetime.strptime(
+            datos.fecha, "%Y-%m-%d"
+        ).date()
+
+        hora_turno = datetime.strptime(
+            datos.hora, "%H:%M"
+        ).time()
+
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Fecha u hora inválida"
+        )
+
+    if datetime.combine(fecha_turno, hora_turno) <= datetime.now():
+        raise HTTPException(
+            status_code=400,
+            detail="No podés reservar turnos en el pasado"
+        )
+
+    if not datos.motivo_consulta.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Ingresá el motivo de consulta"
+        )
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        # Bloquear el registro del médico durante la reserva
+        cursor.execute("""
+            SELECT id_medico
+            FROM medico
+            WHERE id_medico = %s AND activo = 1
+            FOR UPDATE
+        """, (datos.id_medico,))
+
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail="Médico no disponible"
+            )
+
+        # Verificar que el paciente esté activo
+        cursor.execute("""
+            SELECT id_paciente
+            FROM paciente
+            WHERE id_paciente = %s AND activo = 1
+        """, (id_paciente,))
+
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=403,
+                detail="Paciente inexistente o inactivo"
+            )
+
+        dias_semana = [
+            "Lunes", "Martes", "Miércoles",
+            "Jueves", "Viernes", "Sábado", "Domingo"
+        ]
+
+        dia = dias_semana[fecha_turno.weekday()]
+
+        # Consultar agenda del médico
+        cursor.execute("""
+            SELECT hora_inicio, hora_fin, duracion_turno
+            FROM agenda_medica
+            WHERE id_medico = %s
+              AND dia_semana = %s
+              AND activo = 1
+            LIMIT 1
+        """, (datos.id_medico, dia))
+
+        agenda = cursor.fetchone()
+
+        if not agenda:
+            raise HTTPException(
+                status_code=400,
+                detail="El médico no atiende ese día"
+            )
+
+        # MySQL puede devolver los horarios como timedelta
+        def convertir_hora(valor):
+            if isinstance(valor, timedelta):
+                return (datetime.min + valor).time()
+            if isinstance(valor, str):
+                return datetime.strptime(valor, "%H:%M:%S").time()
+            return valor
+
+        inicio = datetime.combine(
+            fecha_turno,
+            convertir_hora(agenda["hora_inicio"])
+        )
+
+        fin = datetime.combine(
+            fecha_turno,
+            convertir_hora(agenda["hora_fin"])
+        )
+
+        duracion = timedelta(
+            minutes=int(agenda["duracion_turno"])
+        )
+
+        if duracion.total_seconds() <= 0:
+            raise HTTPException(
+                status_code=500,
+                detail="Duración de agenda inválida"
+            )
+
+        horarios_validos = []
+        actual = inicio
+
+        while actual + duracion <= fin:
+            horarios_validos.append(actual.time())
+            actual += duracion
+
+        if hora_turno not in horarios_validos:
+            raise HTTPException(
+                status_code=400,
+                detail="El horario no pertenece a la agenda médica"
+            )
+
+        # Comprobar que el horario no esté ocupado
+        cursor.execute("""
+            SELECT id_turno
+            FROM turno
+            WHERE id_medico = %s
+              AND fecha = %s
+              AND hora = %s
+            LIMIT 1
+        """, (
+            datos.id_medico,
+            datos.fecha,
+            datos.hora
+        ))
+
+        if cursor.fetchone():
+            raise HTTPException(
+                status_code=409,
+                detail="Ese horario ya está ocupado"
+            )
+
+        # Comprobar bloqueos de agenda
+        cursor.execute("""
+            SELECT id_bloqueo
+            FROM bloqueo_agenda
+            WHERE id_medico = %s
+              AND fecha = %s
+              AND (
+                  dia_completo = TRUE
+                  OR (
+                      hora_inicio <= %s
+                      AND hora_fin > %s
+                  )
+              )
+            LIMIT 1
+        """, (
+            datos.id_medico,
+            datos.fecha,
+            datos.hora,
+            datos.hora
+        ))
+
+        if cursor.fetchone():
+            raise HTTPException(
+                status_code=409,
+                detail="El horario está bloqueado"
+            )
+
+        # Estado inicial del turno
+        cursor.execute("""
+            SELECT id_estado
+            FROM estado_turno
+            WHERE descripcion = 'Asignado'
+            LIMIT 1
+        """)
+
+        estado = cursor.fetchone()
+
+        if not estado:
+            raise HTTPException(
+                status_code=500,
+                detail="No existe el estado Asignado"
+            )
+
+        # Guardar el turno
+        cursor.execute("""
+            INSERT INTO turno (
+                fecha,
+                hora,
+                motivo_consulta,
+                tipo_turno,
+                id_paciente,
+                id_medico,
+                id_estado
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            datos.fecha,
+            datos.hora,
+            datos.motivo_consulta.strip(),
+            "Programado",
+            id_paciente,
+            datos.id_medico,
+            estado["id_estado"]
+        ))
+
+        id_turno = cursor.lastrowid
+        conexion.commit()
+
+        return {
+            "mensaje": "Turno reservado correctamente",
+            "id_turno": id_turno,
+            "estado": "Asignado"
+        }
+
+    except HTTPException:
+        conexion.rollback()
+        raise
+
+    except mysql.connector.Error:
+        conexion.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Error al guardar el turno"
+        )
+
+    finally:
         cursor.close()
         conexion.close()
 
@@ -2540,3 +3045,187 @@ def desactivar_agenda_medica(id_agenda: int):
     finally:
         cursor.close()
         conexion.close()        
+
+
+# =========================================================
+# REGISTRO PÚBLICO DE PACIENTES - INTEGRACIÓN MAGGIE
+# =========================================================
+
+class RegistroPacienteRequest(BaseModel):
+    email: str
+    password: str
+    nombre: str
+    apellido: str
+    dni: str
+    telefono: Optional[str] = ""
+
+
+@app.post("/api/registro")
+def registrar_paciente(datos: RegistroPacienteRequest):
+
+    email = datos.email.strip().lower()
+    nombre = datos.nombre.strip()
+    apellido = datos.apellido.strip()
+    dni = datos.dni.strip()
+    telefono = (datos.telefono or "").strip()
+
+    if not email or "@" not in email:
+        raise HTTPException(
+            status_code=400,
+            detail="Ingresá un correo electrónico válido"
+        )
+
+    if len(email) > 50:
+        raise HTTPException(
+            status_code=400,
+            detail="El correo es demasiado largo para usarlo como usuario"
+        )
+
+    if not nombre or not apellido or not dni:
+        raise HTTPException(
+            status_code=400,
+            detail="Completá nombre, apellido y DNI"
+        )
+
+    if len(datos.password) < 6:
+        raise HTTPException(
+            status_code=400,
+            detail="La contraseña debe tener al menos 6 caracteres"
+        )
+
+    if len(datos.password.encode("utf-8")) > 72:
+        raise HTTPException(
+            status_code=400,
+            detail="La contraseña es demasiado larga"
+        )
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        # 1. Verificar que el correo no esté registrado
+        cursor.execute(
+            "SELECT id_usuario FROM usuario WHERE email = %s",
+            (email,)
+        )
+
+        if cursor.fetchone():
+            raise HTTPException(
+                status_code=400,
+                detail="El correo electrónico ya está registrado"
+            )
+
+        # 2. Verificar que el DNI no exista
+        cursor.execute(
+            "SELECT id_paciente FROM paciente WHERE dni = %s",
+            (dni,)
+        )
+
+        if cursor.fetchone():
+            raise HTTPException(
+                status_code=400,
+                detail="El DNI ya está registrado. Consultá con recepción."
+            )
+
+        # 3. Buscar el rol Paciente
+        cursor.execute(
+            "SELECT id_rol FROM rol WHERE descripcion = %s",
+            ("Paciente",)
+        )
+
+        rol = cursor.fetchone()
+
+        if not rol:
+            raise HTTPException(
+                status_code=500,
+                detail="No está configurado el rol Paciente"
+            )
+
+        # 4. Crear el paciente
+        cursor.execute("""
+            INSERT INTO paciente (
+                nombre,
+                apellido,
+                dni,
+                telefono,
+                email,
+                activo
+            )
+            VALUES (%s, %s, %s, %s, %s, 1)
+        """, (
+            nombre,
+            apellido,
+            dni,
+            telefono,
+            email
+        ))
+
+        id_paciente = cursor.lastrowid
+
+        # 5. Encriptar la contraseña
+        password_hash = bcrypt.hashpw(
+            datos.password.encode("utf-8"),
+            bcrypt.gensalt()
+        ).decode("utf-8")
+
+        # 6. Crear usuario asociado al paciente
+        cursor.execute("""
+            INSERT INTO usuario (
+                username,
+                password,
+                email,
+                id_paciente,
+                activo
+            )
+            VALUES (%s, %s, %s, %s, 1)
+        """, (
+            email,
+            password_hash,
+            email,
+            id_paciente
+        ))
+
+        id_usuario = cursor.lastrowid
+
+        # 7. Asignar únicamente el rol Paciente
+        cursor.execute("""
+            INSERT INTO usuario_rol (
+                id_usuario,
+                id_rol
+            )
+            VALUES (%s, %s)
+        """, (
+            id_usuario,
+            rol["id_rol"]
+        ))
+
+        # 8. Guardar todo junto
+        conexion.commit()
+
+        return {
+            "mensaje": "Paciente registrado correctamente",
+            "id_usuario": id_usuario,
+            "id_paciente": id_paciente
+        }
+
+    except HTTPException:
+        conexion.rollback()
+        raise
+
+    except mysql.connector.IntegrityError:
+        conexion.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="El correo, usuario o DNI ya está registrado"
+        )
+
+    except mysql.connector.Error:
+        conexion.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="No se pudo completar el registro"
+        )
+
+    finally:
+        cursor.close()
+        conexion.close()

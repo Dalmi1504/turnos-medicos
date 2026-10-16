@@ -1,46 +1,100 @@
+
 import { useEffect, useMemo, useState } from "react";
 import "../../styles/dashboard.css";
 
 function AgendaMedico() {
   const [turnos, setTurnos] = useState([]);
+  const [nombreMedico, setNombreMedico] = useState("Médico");
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
 
-  // TEMPORAL:
-  // Hasta tener login, simulamos al médico con ID 2.
-  const ID_MEDICO_ACTUAL = 2;
+  // =========================
+  // USUARIO QUE INICIÓ SESIÓN
+  // =========================
+  let usuario = null;
+
+  try {
+    usuario = JSON.parse(localStorage.getItem("usuario"));
+  } catch {
+    usuario = null;
+  }
+
+  const ID_MEDICO_ACTUAL = Number(usuario?.id_medico);
 
   // =========================
   // FECHA SELECCIONADA
   // =========================
-  const hoy = new Date().toLocaleDateString("en-CA");
+  const fechaActual = new Date();
+
+  const hoy = [
+    fechaActual.getFullYear(),
+    String(fechaActual.getMonth() + 1).padStart(2, "0"),
+    String(fechaActual.getDate()).padStart(2, "0"),
+  ].join("-");
+
   const [fechaSeleccionada, setFechaSeleccionada] = useState(hoy);
 
   // =========================
-  // CARGAR TURNOS
+  // CARGAR TURNOS Y MÉDICOS
   // =========================
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/turnos")
-      .then((respuesta) => {
-        if (!respuesta.ok) {
-          throw new Error("Error al obtener los turnos");
+    if (!ID_MEDICO_ACTUAL) {
+      setError("No se encontró un médico asociado a tu usuario.");
+      setCargando(false);
+      return;
+    }
+
+    let activo = true;
+
+    const cargarDatos = async () => {
+      setCargando(true);
+      setError("");
+
+      try {
+        const [respuestaTurnos, respuestaMedicos] =
+          await Promise.all([
+            fetch("http://127.0.0.1:8000/turnos"),
+            fetch("http://127.0.0.1:8000/medicos"),
+          ]);
+
+        if (!respuestaTurnos.ok || !respuestaMedicos.ok) {
+          throw new Error("No se pudieron cargar los datos.");
         }
 
-        return respuesta.json();
-      })
-      .then((datos) => {
-        setTurnos(datos);
-      })
-      .catch((error) => {
-        console.error(error);
-      });
-  }, []);
+        const datosTurnos = await respuestaTurnos.json();
+        const datosMedicos = await respuestaMedicos.json();
 
-  // =========================
-  // NOMBRE DEL MÉDICO
-  // =========================
-  const nombreMedico =
-    turnos.find(
-      (turno) => Number(turno.id_medico) === ID_MEDICO_ACTUAL
-    )?.medico || "Médico";
+        if (!activo) return;
+
+        setTurnos(datosTurnos);
+
+        const medicoActual = datosMedicos.find(
+          (medico) =>
+            Number(medico.id_medico) === ID_MEDICO_ACTUAL
+        );
+
+        if (medicoActual) {
+          setNombreMedico(
+            `${medicoActual.nombre} ${medicoActual.apellido}`
+          );
+        }
+      } catch (err) {
+        if (activo) {
+          setError(err.message);
+        }
+      } finally {
+        if (activo) {
+          setCargando(false);
+        }
+      }
+    };
+
+    cargarDatos();
+
+    return () => {
+      activo = false;
+    };
+  }, [ID_MEDICO_ACTUAL]);
 
   // =========================
   // TURNOS DEL MÉDICO
@@ -53,7 +107,7 @@ function AgendaMedico() {
           turno.fecha === fechaSeleccionada
       )
       .sort((a, b) => a.hora.localeCompare(b.hora));
-  }, [turnos, fechaSeleccionada]);
+  }, [turnos, fechaSeleccionada, ID_MEDICO_ACTUAL]);
 
   // =========================
   // CLASE PARA ESTADOS
@@ -100,8 +154,16 @@ function AgendaMedico() {
           </label>
         </div>
 
-        {/* TURNOS */}
-        {turnosFiltrados.length === 0 ? (
+        {/* MENSAJES */}
+        {cargando ? (
+          <div className="dashboard-vacio">
+            Cargando agenda...
+          </div>
+        ) : error ? (
+          <div className="dashboard-vacio">
+            {error}
+          </div>
+        ) : turnosFiltrados.length === 0 ? (
           <div className="dashboard-vacio">
             No tenés turnos asignados para esta fecha.
           </div>
