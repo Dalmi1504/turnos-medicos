@@ -25,3 +25,9 @@ dist-ssr
 # Variables de entorno y claves secretas
 .env
 **/.env
+# Entorno virtual de Python
+backend/.venv/
+
+# Archivos temporales de Python
+__pycache__/
+*.pyc

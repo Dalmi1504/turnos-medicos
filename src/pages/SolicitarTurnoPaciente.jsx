@@ -18,12 +18,68 @@ function SolicitarTurnoPaciente() {
   const [cargandoHorarios, setCargandoHorarios] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
-  const hoy = new Date();
-  const fechaMinima = [
-    hoy.getFullYear(),
-    String(hoy.getMonth() + 1).padStart(2, "0"),
-    String(hoy.getDate()).padStart(2, "0"),
-  ].join("-");
+  const [calendarioAbierto, setCalendarioAbierto] = useState(false);
+  const [mesVisible, setMesVisible] = useState(() => {
+    const hoy = new Date();
+    return new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  });
+
+  const formatearFecha = (fechaDate) => {
+    const anio = fechaDate.getFullYear();
+    const mes = String(fechaDate.getMonth() + 1).padStart(2, "0");
+    const dia = String(fechaDate.getDate()).padStart(2, "0");
+    return `${anio}-${mes}-${dia}`;
+  };
+
+  const fechaMinima = formatearFecha(new Date());
+
+  const cambiarMes = (cantidad) => {
+    setMesVisible(
+      new Date(
+        mesVisible.getFullYear(),
+        mesVisible.getMonth() + cantidad,
+        1
+      )
+    );
+  };
+
+  const seleccionarFecha = (fechaElegida) => {
+    setFecha(fechaElegida);
+    setCalendarioAbierto(false);
+    setMensaje("");
+  };
+
+  const obtenerDiasCalendario = () => {
+    const anio = mesVisible.getFullYear();
+    const mes = mesVisible.getMonth();
+
+    const primerDia = new Date(anio, mes, 1);
+    const cantidadDias = new Date(anio, mes + 1, 0).getDate();
+
+    // Semana comenzando el lunes
+    const espaciosIniciales = (primerDia.getDay() + 6) % 7;
+
+    const dias = Array(espaciosIniciales).fill(null);
+
+    for (let dia = 1; dia <= cantidadDias; dia++) {
+      dias.push(new Date(anio, mes, dia));
+    }
+
+    return dias;
+  };
+
+  const nombreMes = mesVisible.toLocaleDateString("es-AR", {
+    month: "long",
+    year: "numeric",
+  });
+
+  const fechaVisible = fecha
+    ? fecha.split("-").reverse().join("/")
+    : "Seleccioná una fecha";
+
+  const mesAnteriorDeshabilitado =
+    mesVisible.getFullYear() === new Date().getFullYear() &&
+    mesVisible.getMonth() === new Date().getMonth();
 
   // Cargar médicos activos
   useEffect(() => {
@@ -48,7 +104,7 @@ function SolicitarTurnoPaciente() {
     cargarMedicos();
   }, []);
 
-  // Consultar horarios reales cuando cambia el médico o la fecha
+  // Consultar horarios disponibles
   useEffect(() => {
     if (!idMedico || !fecha) {
       setHorarios([]);
@@ -102,6 +158,7 @@ function SolicitarTurnoPaciente() {
     return () => controlador.abort();
   }, [idMedico, fecha]);
 
+  // Confirmar reserva
   const manejarSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -150,7 +207,6 @@ function SolicitarTurnoPaciente() {
       }
 
       setMensaje("¡Turno reservado correctamente!");
-
       navigate("/portal-paciente/mis-turnos");
     } catch (err) {
       setError(err.message);
@@ -164,6 +220,9 @@ function SolicitarTurnoPaciente() {
     padding: "10px",
     boxSizing: "border-box",
     marginTop: "5px",
+    border: "1px solid #d5dce5",
+    borderRadius: "6px",
+    fontSize: "15px",
   };
 
   return (
@@ -203,10 +262,9 @@ function SolicitarTurnoPaciente() {
           backgroundColor: "#fff",
         }}
       >
+        {/* MÉDICO */}
         <div style={{ marginBottom: "20px" }}>
-          <label htmlFor="medico">
-            Seleccionar médico
-          </label>
+          <label htmlFor="medico">Seleccionar médico</label>
 
           <select
             id="medico"
@@ -230,26 +288,173 @@ function SolicitarTurnoPaciente() {
           </select>
         </div>
 
+        {/* CALENDARIO GRANDE */}
         <div style={{ marginBottom: "20px" }}>
-          <label htmlFor="fecha">
-            Fecha del turno
-          </label>
+          <label>Fecha del turno</label>
 
-          <input
-            id="fecha"
-            type="date"
-            min={fechaMinima}
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            required
-            style={estiloCampo}
-          />
+          <button
+            type="button"
+            onClick={() => setCalendarioAbierto(!calendarioAbierto)}
+            style={{
+              ...estiloCampo,
+              textAlign: "left",
+              background: "#fff",
+              cursor: "pointer",
+              color: fecha ? "#24364b" : "#777",
+            }}
+          >
+            📅 {fechaVisible}
+            <span style={{ float: "right" }}>
+              {calendarioAbierto ? "▲" : "▼"}
+            </span>
+          </button>
+
+          {calendarioAbierto && (
+            <div
+              style={{
+                marginTop: "10px",
+                padding: "20px",
+                border: "1px solid #dce3ec",
+                borderRadius: "12px",
+                backgroundColor: "#fff",
+                boxShadow: "0 5px 18px rgba(0,0,0,0.08)",
+                maxWidth: "440px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "20px",
+                }}
+              >
+                <button
+                  type="button"
+                  disabled={mesAnteriorDeshabilitado}
+                  onClick={() => cambiarMes(-1)}
+                  style={{
+                    padding: "9px 14px",
+                    cursor: mesAnteriorDeshabilitado
+                      ? "not-allowed"
+                      : "pointer",
+                    border: "1px solid #ddd",
+                    borderRadius: "7px",
+                    background: "#f5f7fa",
+                    opacity: mesAnteriorDeshabilitado ? 0.4 : 1,
+                  }}
+                >
+                  ❮
+                </button>
+
+                <strong
+                  style={{
+                    textTransform: "capitalize",
+                    fontSize: "19px",
+                    color: "#24364b",
+                  }}
+                >
+                  {nombreMes}
+                </strong>
+
+                <button
+                  type="button"
+                  onClick={() => cambiarMes(1)}
+                  style={{
+                    padding: "9px 14px",
+                    cursor: "pointer",
+                    border: "1px solid #ddd",
+                    borderRadius: "7px",
+                    background: "#f5f7fa",
+                  }}
+                >
+                  ❯
+                </button>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+                  gap: "6px",
+                }}
+              >
+                {["L", "M", "M", "J", "V", "S", "D"].map(
+                  (dia, indice) => (
+                    <div
+                      key={indice}
+                      style={{
+                        textAlign: "center",
+                        fontWeight: "bold",
+                        color: "#68788c",
+                        padding: "10px 0",
+                      }}
+                    >
+                      {dia}
+                    </div>
+                  )
+                )}
+
+                {obtenerDiasCalendario().map((dia, indice) => {
+                  if (!dia) {
+                    return <div key={`vacio-${indice}`} />;
+                  }
+
+                  const fechaDia = formatearFecha(dia);
+                  const esPasado = fechaDia < fechaMinima;
+                  const seleccionado = fechaDia === fecha;
+                  const esHoy = fechaDia === fechaMinima;
+
+                  return (
+                    <button
+                      key={fechaDia}
+                      type="button"
+                      disabled={esPasado}
+                      onClick={() => seleccionarFecha(fechaDia)}
+                      style={{
+                        minHeight: "48px",
+                        borderRadius: "8px",
+                        border: esHoy
+                          ? "2px solid #2384e8"
+                          : "1px solid transparent",
+                        background: seleccionado
+                          ? "#2384e8"
+                          : "#f4f7fb",
+                        color: seleccionado
+                          ? "#fff"
+                          : esPasado
+                          ? "#bec6d0"
+                          : "#24364b",
+                        fontWeight: seleccionado ? "bold" : "normal",
+                        fontSize: "15px",
+                        cursor: esPasado
+                          ? "not-allowed"
+                          : "pointer",
+                      }}
+                    >
+                      {dia.getDate()}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "#777",
+                  marginTop: "15px",
+                  marginBottom: 0,
+                }}
+              >
+                Seleccioná una fecha para consultar los horarios.
+              </p>
+            </div>
+          )}
         </div>
 
+        {/* HORARIOS */}
         <div style={{ marginBottom: "20px" }}>
-          <label htmlFor="hora">
-            Horario disponible
-          </label>
+          <label htmlFor="hora">Horario disponible</label>
 
           <select
             id="hora"
@@ -289,10 +494,9 @@ function SolicitarTurnoPaciente() {
             )}
         </div>
 
+        {/* MOTIVO */}
         <div style={{ marginBottom: "20px" }}>
-          <label htmlFor="motivo">
-            Motivo de consulta
-          </label>
+          <label htmlFor="motivo">Motivo de consulta</label>
 
           <textarea
             id="motivo"
@@ -307,19 +511,15 @@ function SolicitarTurnoPaciente() {
           />
         </div>
 
-        {error && (
-          <p style={{ color: "red" }}>{error}</p>
-        )}
-
-        {mensaje && (
-          <p style={{ color: "green" }}>{mensaje}</p>
-        )}
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        {mensaje && <p style={{ color: "green" }}>{mensaje}</p>}
 
         <button
           type="submit"
           disabled={
             guardando ||
             cargandoHorarios ||
+            !fecha ||
             !horarios.includes(hora)
           }
           style={{
@@ -331,9 +531,7 @@ function SolicitarTurnoPaciente() {
             cursor: "pointer",
           }}
         >
-          {guardando
-            ? "Reservando..."
-            : "Confirmar Reserva"}
+          {guardando ? "Reservando..." : "Confirmar Reserva"}
         </button>
       </form>
     </main>

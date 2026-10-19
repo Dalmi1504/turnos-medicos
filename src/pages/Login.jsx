@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import "../styles/login.css";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -10,8 +11,13 @@ function Login() {
 
   const navigate = useNavigate();
 
+  // ==========================================
+  // INICIAR SESIÓN
+  // ==========================================
+
   const manejarLogin = async (e) => {
     e.preventDefault();
+
     setError("");
     setCargando(true);
 
@@ -45,7 +51,10 @@ function Login() {
         throw new Error("No se recibió el token de sesión");
       }
 
-      // Determinar la pantalla según el rol.
+      // ==========================================
+      // REDIRECCIÓN SEGÚN EL ROL
+      // ==========================================
+
       let destino;
 
       if (
@@ -61,7 +70,10 @@ function Login() {
         throw new Error("El usuario no tiene un rol válido.");
       }
 
-      // Guardar la sesión para la navegación.
+      // ==========================================
+      // GUARDAR SESIÓN
+      // ==========================================
+
       localStorage.setItem(
         "usuario",
         JSON.stringify(usuario)
@@ -81,92 +93,110 @@ function Login() {
     }
   };
 
+  // ==========================================
+  // INTERFAZ
+  // ==========================================
+
   return (
-    <main
-      style={{
-        maxWidth: "400px",
-        margin: "80px auto",
-        padding: "30px",
-        border: "1px solid #ddd",
-        borderRadius: "12px",
-        backgroundColor: "#fff",
-      }}
-    >
-      <h1>Iniciar sesión</h1>
-      <p>Sistema de gestión médica UCBA</p>
+    <div className="login-contenedor">
 
-      <form onSubmit={manejarLogin}>
-        <label htmlFor="email">
-          Correo electrónico
-        </label>
+      <main className="login-card">
 
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{
-            width: "100%",
-            marginBottom: "15px",
-          }}
-        />
+        <div className="login-encabezado">
+          <h1>Iniciar sesión</h1>
+          <p>Sistema de gestión médica UCBA</p>
+        </div>
 
-        <label htmlFor="password">
-          Contraseña
-        </label>
-
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={{
-            width: "100%",
-            marginBottom: "15px",
-          }}
-        />
-
-        {error && (
-          <p style={{ color: "red" }}>
-            {error}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={cargando}
+        <form
+          className="login-formulario"
+          onSubmit={manejarLogin}
         >
-          {cargando ? "Ingresando..." : "Ingresar"}
-        </button>
-      </form>
 
-      {/* RECUPERAR CONTRASEÑA */}
-      <p
-        style={{
-          marginTop: "20px",
-          textAlign: "center",
-        }}
-      >
-        <Link to="/recuperar-password">
-          ¿Olvidaste tu contraseña?
-        </Link>
-      </p>
+          {/* CORREO ELECTRÓNICO */}
 
-      {/* REGISTRO DE PACIENTES */}
-      <p
-        style={{
-          marginTop: "15px",
-          textAlign: "center",
-        }}
-      >
-        ¿Sos paciente y todavía no tenés cuenta?{" "}
-        <Link to="/registro">
-          Registrate acá
-        </Link>
-      </p>
-    </main>
+          <div className="login-campo">
+            <label htmlFor="email">
+              Correo electrónico
+            </label>
+
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError("");
+              }}
+              placeholder="ejemplo@correo.com"
+              autoComplete="email"
+              required
+            />
+          </div>
+
+          {/* CONTRASEÑA */}
+
+          <div className="login-campo">
+            <label htmlFor="password">
+              Contraseña
+            </label>
+
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError("");
+              }}
+              placeholder="Ingresá tu contraseña"
+              autoComplete="current-password"
+              required
+            />
+          </div>
+
+          {/* ERROR DE AUTENTICACIÓN */}
+
+          {error && (
+            <p className="login-error" role="alert">
+              {error}
+            </p>
+          )}
+
+          {/* BOTÓN INGRESAR */}
+
+          <button
+            type="submit"
+            className="login-boton"
+            disabled={cargando}
+          >
+            {cargando ? "Ingresando..." : "Ingresar"}
+          </button>
+
+        </form>
+
+        {/* RECUPERAR CONTRASEÑA */}
+
+        <div className="login-recuperar">
+          <Link to="/recuperar-password">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
+
+        {/* REGISTRO DE PACIENTES */}
+
+        <div className="login-registro">
+          <p>
+            ¿Sos paciente y todavía no tenés cuenta?
+          </p>
+
+          <Link to="/registro">
+            Registrate acá
+          </Link>
+        </div>
+
+      </main>
+
+    </div>
   );
 }
 

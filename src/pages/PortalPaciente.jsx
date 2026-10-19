@@ -1,50 +1,146 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import "../styles/portalpaciente.css";
 
 function PortalPaciente() {
   const navigate = useNavigate();
-  const usuarioGuardado = JSON.parse(localStorage.getItem('usuario')) || {};
+
+  // ==========================================
+  // OBTENER USUARIO
+  // ==========================================
+
+  let usuarioGuardado = {};
+
+  try {
+    usuarioGuardado = JSON.parse(
+      localStorage.getItem("usuario") || "{}"
+    );
+  } catch {
+    usuarioGuardado = {};
+  }
+
+  // ==========================================
+  // CERRAR SESIÓN
+  // ==========================================
 
   const cerrarSesion = () => {
-    localStorage.removeItem('usuario');
-    navigate('/login');
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("access_token");
+
+    navigate("/login", { replace: true });
   };
 
+  // ==========================================
+  // INTERFAZ
+  // ==========================================
+
   return (
-    <div style={{ maxWidth: '800px', margin: '40px auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #ddd', paddingBottom: '15px', marginBottom: '20px' }}>
-        <h2>Portal del Paciente - Bienvenid@, {usuarioGuardado.username || 'Paciente'}</h2>
-        <button 
-          onClick={cerrarSesion} 
-          style={{ padding: '8px 15px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-        >
-          Cerrar Sesión
-        </button>
-      </div>
+    <div className="portal-paciente-contenedor">
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <div style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px', background: '#f9f9f9' }}>
-          <h3>📅 Mis Turnos</h3>
-          <p>Aquí podrás consultar los turnos que tienes reservados con los médicos.</p>
-          <button 
-            onClick={() => navigate('/portal-paciente/mis-turnos')}
-            style={{ padding: '10px 15px', background: '#007BFF', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            Ver mis turnos
-          </button>
-        </div>
+      <main className="portal-paciente">
 
-        <div style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px', background: '#f9f9f9' }}>
-          <h3>➕ Solicitar Nuevo Turno</h3>
-          <p>Selecciona especialidad, médico y horario disponible para tu consulta.</p>
-          <button 
-            onClick={() => navigate('/portal-paciente/nuevo-turno')}
-            style={{ padding: '10px 15px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        {/* ENCABEZADO */}
+
+        <header className="portal-paciente-header">
+
+          <div className="portal-paciente-bienvenida">
+            <h1>Portal del Paciente</h1>
+
+            <p>
+              Bienvenido/a,{" "}
+              <strong>
+                {usuarioGuardado.username || "Paciente"}
+              </strong>
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="portal-paciente-cerrar"
+            onClick={cerrarSesion}
           >
-            Sacar Turno
+            Cerrar sesión
           </button>
-        </div>
-      </div>
+
+        </header>
+
+        {/* INTRODUCCIÓN */}
+
+        <section className="portal-paciente-intro">
+          <h2>Gestioná tus turnos médicos</h2>
+
+          <p>
+            Desde este espacio podés consultar tus
+            turnos programados y solicitar nuevas
+            consultas médicas.
+          </p>
+        </section>
+
+        {/* OPCIONES */}
+
+        <section className="portal-paciente-opciones">
+
+          {/* MIS TURNOS */}
+
+          <article className="portal-paciente-card">
+
+            <div className="portal-paciente-icono">
+              📅
+            </div>
+
+            <h3>Mis turnos</h3>
+
+            <p>
+              Consultá tus turnos reservados,
+              las fechas y los profesionales
+              asignados.
+            </p>
+
+            <button
+              type="button"
+              className="portal-paciente-boton"
+              onClick={() =>
+                navigate("/portal-paciente/mis-turnos")
+              }
+            >
+              Ver mis turnos
+            </button>
+
+          </article>
+
+          {/* SOLICITAR TURNO */}
+
+          <article className="portal-paciente-card">
+
+            <div className="portal-paciente-icono">
+              ➕
+            </div>
+
+            <h3>Solicitar nuevo turno</h3>
+
+            <p>
+              Seleccioná una especialidad,
+              un médico y un horario disponible
+              para tu consulta.
+            </p>
+
+            <button
+              type="button"
+              className="portal-paciente-boton"
+              onClick={() =>
+                navigate("/portal-paciente/nuevo-turno")
+              }
+            >
+              Sacar turno
+            </button>
+
+          </article>
+
+        </section>
+
+      </main>
+
     </div>
   );
 }

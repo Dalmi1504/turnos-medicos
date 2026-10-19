@@ -1,338 +1,433 @@
+
 import { useEffect, useState } from "react";
 import "../../styles/medicos.css";
 
+// =====================================================
+// CONFIGURACIÓN
+// =====================================================
+
+const API = "http://127.0.0.1:8000";
+
+const DIAS_SEMANA = [
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+  "Domingo"
+];
+
+// =====================================================
+// COMPONENTE MÉDICOS - SECRETARIA
+// =====================================================
+
 function Medicos() {
+  // ===================================================
+  // ESTADOS
+  // ===================================================
+
   const [medicos, setMedicos] = useState([]);
+  const [agendas, setAgendas] = useState([]);
 
-  const [nuevoMedico, setNuevoMedico] = useState({
-    nombre: "",
-    apellido: "",
-    especialidad: "",
-    matricula: "",
-    telefono: "",
-    email: "",
-  });
+  const [busqueda, setBusqueda] = useState("");
 
-  const [editandoId, setEditandoId] = useState(null);
+  const [
+    especialidadSeleccionada,
+    setEspecialidadSeleccionada
+  ] = useState("Todas");
+
+  const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState("");
 
-  const obtenerMedicos = async () => {
-    try {
-      const respuesta = await fetch("http://127.0.0.1:8000/medicos");
-
-      if (!respuesta.ok) {
-        throw new Error("Error al obtener los médicos");
-      }
-
-      const datos = await respuesta.json();
-
-      const medicosActivos = datos.filter(
-        (medico) => medico.activo !== false && medico.activo !== 0
-      );
-
-      setMedicos(medicosActivos);
-    } catch (error) {
-      console.error("Error al cargar los médicos:", error);
-      setMensaje("No se pudieron cargar los médicos.");
-    }
-  };
+  // ===================================================
+  // CARGAR MÉDICOS Y AGENDAS DESDE FASTAPI
+  // ===================================================
 
   useEffect(() => {
-    obtenerMedicos();
+    const cargarDatos = async () => {
+      try {
+        setCargando(true);
+        setMensaje("");
+
+        const [respuestaMedicos, respuestaAgendas] =
+          await Promise.all([
+            fetch(`${API}/medicos`),
+            fetch(`${API}/agendas-medicas`)
+          ]);
+
+        if (!respuestaMedicos.ok) {
+          throw new Error(
+            "No se pudieron cargar los médicos."
+          );
+        }
+
+        if (!respuestaAgendas.ok) {
+          throw new Error(
+            "No se pudieron cargar las agendas médicas."
+          );
+        }
+
+        const datosMedicos =
+          await respuestaMedicos.json();
+
+        const datosAgendas =
+          await respuestaAgendas.json();
+
+        const medicosActivos = datosMedicos.filter(
+          (medico) =>
+            medico.activo !== false &&
+            medico.activo !== 0
+        );
+
+        setMedicos(medicosActivos);
+        setAgendas(datosAgendas);
+
+      } catch (error) {
+        console.error(
+          "Error al cargar los datos:",
+          error
+        );
+
+        setMensaje(error.message);
+
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarDatos();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  // ===================================================
+  // OBTENER ESPECIALIDADES
+  // ===================================================
 
-    setNuevoMedico((anterior) => ({
-      ...anterior,
-      [name]: value,
-    }));
-  };
+  const especialidades = [
+    ...new Set(
+      medicos
+        .map((medico) => medico.especialidad)
+        .filter(Boolean)
+    )
+  ].sort((a, b) =>
+    a.localeCompare(b, "es")
+  );
 
-  const limpiarFormulario = () => {
-    setNuevoMedico({
-      nombre: "",
-      apellido: "",
-      especialidad: "",
-      matricula: "",
-      telefono: "",
-      email: "",
-    });
+  // ===================================================
+  // FILTRAR MÉDICOS
+  // ===================================================
 
-    setEditandoId(null);
-  };
+  const medicosFiltrados = medicos.filter((medico) => {
+    const texto = busqueda
+      .trim()
+      .toLowerCase();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMensaje("");
+    const nombreCompleto =
+      `${medico.nombre || ""} ${medico.apellido || ""}`
+        .toLowerCase();
 
-    const url = editandoId
-      ? `http://127.0.0.1:8000/medicos/${editandoId}`
-      : "http://127.0.0.1:8000/medicos";
+    const matricula = String(
+      medico.matricula || ""
+    ).toLowerCase();
 
-    const metodo = editandoId ? "PUT" : "POST";
+    const coincideBusqueda =
+      nombreCompleto.includes(texto) ||
+      matricula.includes(texto);
 
-    try {
-      const respuesta = await fetch(url, {
-        method: metodo,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          nombre: nuevoMedico.nombre,
-          apellido: nuevoMedico.apellido,
-          especialidad: nuevoMedico.especialidad,
-          matricula: nuevoMedico.matricula,
-          telefono: nuevoMedico.telefono || null,
-          email: nuevoMedico.email || null,
-          activo: true,
-        }),
-      });
+    const coincideEspecialidad =
+      especialidadSeleccionada === "Todas" ||
+      medico.especialidad === especialidadSeleccionada;
 
-      const resultado = await respuesta.json();
-
-      if (!respuesta.ok) {
-        throw new Error(resultado.detail || "Error al guardar el médico");
-      }
-
-      setMensaje(
-        editandoId
-          ? "Médico actualizado correctamente."
-          : "Médico registrado correctamente."
-      );
-
-      limpiarFormulario();
-      obtenerMedicos();
-    } catch (error) {
-      setMensaje(error.message);
-    }
-  };
-
-  const iniciarEdicion = (medico) => {
-    setEditandoId(medico.id_medico);
-
-    setNuevoMedico({
-      nombre: medico.nombre || "",
-      apellido: medico.apellido || "",
-      especialidad: medico.especialidad || "",
-      matricula: medico.matricula || "",
-      telefono: medico.telefono || "",
-      email: medico.email || "",
-    });
-
-    setMensaje("");
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
-
-  const cancelarEdicion = () => {
-    limpiarFormulario();
-    setMensaje("");
-  };
-
-  const eliminarMedico = async (idMedico) => {
-    const confirmar = window.confirm(
-      "¿Estás segura de que querés dar de baja a este médico?"
+    return (
+      coincideBusqueda &&
+      coincideEspecialidad
     );
+  });
 
-    if (!confirmar) {
-      return;
-    }
+  // ===================================================
+  // OBTENER AGENDA DE CADA MÉDICO
+  // ===================================================
 
-    try {
-      const respuesta = await fetch(
-        `http://127.0.0.1:8000/medicos/${idMedico}`,
-        {
-          method: "DELETE",
-        }
-      );
+  const obtenerAgendaMedico = (idMedico) => {
+    return agendas
+      .filter(
+        (agenda) =>
+          Number(agenda.id_medico) === Number(idMedico)
+      )
+      .sort((a, b) => {
+        const posicionA = DIAS_SEMANA.indexOf(
+          a.dia_semana
+        );
 
-      const resultado = await respuesta.json();
+        const posicionB = DIAS_SEMANA.indexOf(
+          b.dia_semana
+        );
 
-      if (!respuesta.ok) {
-        throw new Error(resultado.detail || "Error al eliminar el médico");
-      }
-
-      setMensaje("Médico dado de baja correctamente.");
-      obtenerMedicos();
-    } catch (error) {
-      setMensaje(error.message);
-    }
+        return posicionA - posicionB;
+      });
   };
+
+  // ===================================================
+  // LIMPIAR FILTROS
+  // ===================================================
+
+  const limpiarFiltros = () => {
+    setBusqueda("");
+    setEspecialidadSeleccionada("Todas");
+  };
+
+  // ===================================================
+  // INTERFAZ
+  // ===================================================
 
   return (
     <section className="medicos-page">
+
+      {/* ENCABEZADO */}
+
       <div className="medicos-header">
-        <h1>Médicos</h1>
-        <p>Gestión de profesionales médicos de la clínica.</p>
+        <h1>Médicos y disponibilidad</h1>
+
+        <p>
+          Consultá los profesionales de la clínica,
+          sus especialidades y horarios habituales
+          de atención.
+        </p>
       </div>
 
+      {/* BUSCADOR */}
+
       <div className="medicos-card">
-        <h2>{editandoId ? "Editar médico" : "Registrar nuevo médico"}</h2>
+        <h2>Buscar profesionales</h2>
 
-        <form onSubmit={handleSubmit} className="medicos-form">
-          <div className="medicos-form-grid">
-            <div className="medicos-field">
-              <label>Nombre</label>
-              <input
-                type="text"
-                name="nombre"
-                value={nuevoMedico.nombre}
-                onChange={handleChange}
-                placeholder="Ej: Juan"
-                required
-              />
-            </div>
+        <div className="medicos-form-grid">
 
-            <div className="medicos-field">
-              <label>Apellido</label>
-              <input
-                type="text"
-                name="apellido"
-                value={nuevoMedico.apellido}
-                onChange={handleChange}
-                placeholder="Ej: Pérez"
-                required
-              />
-            </div>
+          {/* NOMBRE O MATRÍCULA */}
 
-            <div className="medicos-field">
-              <label>Especialidad</label>
-              <input
-                type="text"
-                name="especialidad"
-                value={nuevoMedico.especialidad}
-                onChange={handleChange}
-                placeholder="Ej: Cardiología"
-                required
-              />
-            </div>
+          <div className="medicos-field">
+            <label htmlFor="buscarMedico">
+              Nombre, apellido o matrícula
+            </label>
 
-            <div className="medicos-field">
-              <label>Matrícula</label>
-              <input
-                type="text"
-                name="matricula"
-                value={nuevoMedico.matricula}
-                onChange={handleChange}
-                placeholder="Ej: MP1001"
-                required
-              />
-            </div>
-
-            <div className="medicos-field">
-              <label>Teléfono</label>
-              <input
-                type="text"
-                name="telefono"
-                value={nuevoMedico.telefono}
-                onChange={handleChange}
-                placeholder="Ej: 1122334455"
-              />
-            </div>
-
-            <div className="medicos-field">
-              <label>Email</label>
-              <input
-                type="email"
-                name="email"
-                value={nuevoMedico.email}
-                onChange={handleChange}
-                placeholder="Ej: medico@clinica.com"
-              />
-            </div>
+            <input
+              id="buscarMedico"
+              type="text"
+              value={busqueda}
+              onChange={(e) =>
+                setBusqueda(e.target.value)
+              }
+              placeholder="Buscar médico..."
+            />
           </div>
 
-          <div className="medicos-form-actions">
-            <button type="submit" className="medicos-btn-primary">
-              {editandoId ? "Guardar cambios" : "Guardar médico"}
-            </button>
+          {/* ESPECIALIDAD */}
 
-            {editandoId && (
-              <button
-                type="button"
-                onClick={cancelarEdicion}
-                className="medicos-btn-secondary"
-              >
-                Cancelar
-              </button>
-            )}
+          <div className="medicos-field">
+            <label htmlFor="especialidadMedico">
+              Especialidad
+            </label>
+
+            <select
+              id="especialidadMedico"
+              value={especialidadSeleccionada}
+              onChange={(e) =>
+                setEspecialidadSeleccionada(
+                  e.target.value
+                )
+              }
+            >
+              <option value="Todas">
+                Todas las especialidades
+              </option>
+
+              {especialidades.map((especialidad) => (
+                <option
+                  key={especialidad}
+                  value={especialidad}
+                >
+                  {especialidad}
+                </option>
+              ))}
+            </select>
           </div>
+        </div>
 
-          {mensaje && <p className="medicos-mensaje">{mensaje}</p>}
-        </form>
+        <div
+          className="medicos-form-actions"
+          style={{
+            marginTop: "18px"
+          }}
+        >
+          <button
+            type="button"
+            className="medicos-btn-secondary"
+            onClick={limpiarFiltros}
+          >
+            Limpiar filtros
+          </button>
+        </div>
       </div>
 
+      {/* LISTADO DE PROFESIONALES */}
+
       <div className="medicos-card">
+
         <div className="medicos-list-header">
-          <h2>Listado de médicos</h2>
-          <span>{medicos.length} profesionales activos</span>
+          <h2>Profesionales activos</h2>
+
+          <span>
+            {medicosFiltrados.length} de {medicos.length}{" "}
+            profesionales
+          </span>
         </div>
 
-        <div className="medicos-table-container">
-          <table className="medicos-table">
-            <thead>
-              <tr>
-                <th>Nombre y apellido</th>
-                <th>Especialidad</th>
-                <th>Matrícula</th>
-                <th>Teléfono</th>
-                <th>Email</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
+        {/* MENSAJES */}
 
-            <tbody>
-              {medicos.length > 0 ? (
-                medicos.map((medico) => (
-                  <tr key={medico.id_medico}>
-                    <td>
-                      {medico.nombre} {medico.apellido}
-                    </td>
+        {mensaje && (
+          <p className="medicos-mensaje">
+            {mensaje}
+          </p>
+        )}
 
-                    <td>{medico.especialidad}</td>
+        {cargando ? (
+          <p>Cargando profesionales y agendas...</p>
+        ) : medicosFiltrados.length === 0 ? (
+          <p className="medicos-empty">
+            No se encontraron profesionales
+            con los filtros seleccionados.
+          </p>
+        ) : (
 
-                    <td>{medico.matricula}</td>
+          /* TABLA DE MÉDICOS */
 
-                    <td>{medico.telefono || "-"}</td>
+          <div className="medicos-table-container">
+            <table className="medicos-table">
 
-                    <td>{medico.email || "-"}</td>
-
-                    <td>
-                      <div className="medicos-actions">
-                        <button
-                          type="button"
-                          onClick={() => iniciarEdicion(medico)}
-                          className="medicos-btn-edit"
-                        >
-                          Editar
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => eliminarMedico(medico.id_medico)}
-                          className="medicos-btn-delete"
-                        >
-                          Dar de baja
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
+              <thead>
                 <tr>
-                  <td colSpan="6" className="medicos-empty">
-                    No hay médicos activos registrados.
-                  </td>
+                  <th>Profesional</th>
+                  <th>Especialidad</th>
+                  <th>Matrícula</th>
+                  <th>Días y horarios de atención</th>
+                  <th>Contacto</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+
+              <tbody>
+                {medicosFiltrados.map((medico) => {
+                  const agendaMedico =
+                    obtenerAgendaMedico(
+                      medico.id_medico
+                    );
+
+                  return (
+                    <tr key={medico.id_medico}>
+
+                      {/* NOMBRE */}
+
+                      <td>
+                        <strong>
+                          {medico.nombre}{" "}
+                          {medico.apellido}
+                        </strong>
+                      </td>
+
+                      {/* ESPECIALIDAD */}
+
+                      <td>
+                        {medico.especialidad || "-"}
+                      </td>
+
+                      {/* MATRÍCULA */}
+
+                      <td>
+                        {medico.matricula || "-"}
+                      </td>
+
+                      {/* DÍAS Y HORARIOS */}
+
+                      <td>
+                        {agendaMedico.length > 0 ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "8px"
+                            }}
+                          >
+                            {agendaMedico.map((agenda) => (
+                              <div
+                                key={agenda.id_agenda}
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "3px"
+                                }}
+                              >
+                                <strong
+                                  style={{
+                                    color: "#243447"
+                                  }}
+                                >
+                                  {agenda.dia_semana}
+                                </strong>
+
+                                <span
+                                  style={{
+                                    color: "#64748b",
+                                    fontSize: "13px"
+                                  }}
+                                >
+                                  {agenda.hora_inicio} a{" "}
+                                  {agenda.hora_fin}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span
+                            style={{
+                              color: "#64748b"
+                            }}
+                          >
+                            Sin agenda configurada
+                          </span>
+                        )}
+                      </td>
+
+                      {/* CONTACTO */}
+
+                      <td>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "5px"
+                          }}
+                        >
+                          <span>
+                            {medico.telefono || "-"}
+                          </span>
+
+                          <span
+                            style={{
+                              color: "#64748b",
+                              fontSize: "13px"
+                            }}
+                          >
+                            {medico.email || "-"}
+                          </span>
+                        </div>
+                      </td>
+
+                    </tr>
+                  );
+                })}
+              </tbody>
+
+            </table>
+          </div>
+        )}
       </div>
     </section>
   );

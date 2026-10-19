@@ -1,0 +1,223 @@
+
+/* ==========================================
+   PORTAL DEL PACIENTE - SISTEMA UCBA
+========================================== */
+
+/* CONTENEDOR PRINCIPAL */
+
+.portal-paciente-contenedor {
+  width: 100%;
+  min-height: 100vh;
+  padding: 40px 24px;
+  background: #f3f6fb;
+  box-sizing: border-box;
+}
+
+/* ==========================================
+   CONTENIDO
+========================================== */
+
+.portal-paciente {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ==========================================
+   ENCABEZADO
+========================================== */
+
+.portal-paciente-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 24px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid #dfe4eb;
+}
+
+.portal-paciente-bienvenida h1 {
+  margin: 0 0 8px;
+  color: #17233c;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.portal-paciente-bienvenida p {
+  margin: 0;
+  color: #6f7888;
+  font-size: 14px;
+}
+
+.portal-paciente-bienvenida strong {
+  color: #29344a;
+  font-weight: 600;
+}
+
+/* ==========================================
+   CERRAR SESIÓN
+========================================== */
+
+.portal-paciente-cerrar {
+  padding: 11px 18px;
+  border: 1px solid #f2cccc;
+  border-radius: 8px;
+  background: #fdecec;
+  color: #b74a4a;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+
+.portal-paciente-cerrar:hover {
+  background: #fbdede;
+  border-color: #e5a9a9;
+}
+
+/* ==========================================
+   INTRODUCCIÓN
+========================================== */
+
+.portal-paciente-intro {
+  margin-bottom: 28px;
+}
+
+.portal-paciente-intro h2 {
+  margin: 0 0 8px;
+  color: #17233c;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.portal-paciente-intro p {
+  margin: 0;
+  color: #7c8495;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ==========================================
+   TARJETAS
+========================================== */
+
+.portal-paciente-opciones {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.portal-paciente-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 28px;
+  background: #ffffff;
+  border: 1px solid #eef1f5;
+  border-radius: 14px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.portal-paciente-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
+}
+
+/* ==========================================
+   ÍCONOS
+========================================== */
+
+.portal-paciente-icono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  background: #e3f5ff;
+  font-size: 25px;
+}
+
+/* ==========================================
+   TEXTOS DE TARJETAS
+========================================== */
+
+.portal-paciente-card h3 {
+  margin: 0 0 12px;
+  color: #17233c;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.portal-paciente-card p {
+  margin: 0 0 24px;
+  color: #7c8495;
+  font-size: 14px;
+  line-height: 1.7;
+  flex-grow: 1;
+}
+
+/* ==========================================
+   BOTONES
+========================================== */
+
+.portal-paciente-boton {
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #16a9c7;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+
+.portal-paciente-boton:hover {
+  background: #138fa9;
+  transform: translateY(-1px);
+}
+
+/* ==========================================
+   RESPONSIVE
+========================================== */
+
+@media (max-width: 700px) {
+  .portal-paciente-contenedor {
+    padding: 24px 16px;
+  }
+
+  .portal-paciente-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .portal-paciente-bienvenida h1 {
+    font-size: 25px;
+  }
+
+  .portal-paciente-opciones {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-paciente-card {
+    padding: 22px;
+  }
+
+  .portal-paciente-cerrar {
+    width: 100%;
+  }
+}

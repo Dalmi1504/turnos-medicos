@@ -1,0 +1,224 @@
+
+/* ==========================================
+   LOGIN - SISTEMA UCBA
+========================================== */
+
+/* CONTENEDOR PRINCIPAL */
+
+.login-contenedor {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  background: #f3f6fb;
+  box-sizing: border-box;
+}
+
+/* ==========================================
+   TARJETA DE LOGIN
+========================================== */
+
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 38px;
+  background: #ffffff;
+  border: 1px solid #eef1f5;
+  border-radius: 14px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+  box-sizing: border-box;
+}
+
+/* ==========================================
+   ENCABEZADO
+========================================== */
+
+.login-encabezado {
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.login-encabezado h1 {
+  margin: 0 0 10px;
+  color: #17233c;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.login-encabezado p {
+  margin: 0;
+  color: #6f7888;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ==========================================
+   FORMULARIO
+========================================== */
+
+.login-formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.login-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.login-campo label {
+  color: #29344a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ==========================================
+   INPUTS
+========================================== */
+
+.login-campo input {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid #dfe4eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #17233c;
+  font-family: inherit;
+  font-size: 14px;
+  box-sizing: border-box;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.login-campo input::placeholder {
+  color: #9ca3af;
+}
+
+.login-campo input:focus {
+  border-color: #16a9c7;
+  box-shadow: 0 0 0 3px rgba(22, 169, 199, 0.12);
+}
+
+/* ==========================================
+   MENSAJE DE ERROR
+========================================== */
+
+.login-error {
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fdecec;
+  color: #b74a4a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ==========================================
+   BOTÓN INGRESAR
+========================================== */
+
+.login-boton {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 6px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #16a9c7;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+
+.login-boton:hover:not(:disabled) {
+  background: #138fa9;
+  transform: translateY(-1px);
+}
+
+.login-boton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ==========================================
+   RECUPERAR CONTRASEÑA
+========================================== */
+
+.login-recuperar {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.login-recuperar a {
+  color: #16a9c7;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.login-recuperar a:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================
+   REGISTRO DE PACIENTES
+========================================== */
+
+.login-registro {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #edf0f4;
+  text-align: center;
+}
+
+.login-registro p {
+  margin: 0 0 8px;
+  color: #7c8495;
+  font-size: 13px;
+}
+
+.login-registro a {
+  color: #16a9c7;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.login-registro a:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================
+   RESPONSIVE
+========================================== */
+
+@media (max-width: 600px) {
+  .login-contenedor {
+    padding: 20px 12px;
+  }
+
+  .login-card {
+    padding: 28px 22px;
+    border-radius: 12px;
+  }
+
+  .login-encabezado h1 {
+    font-size: 24px;
+  }
+
+  .login-formulario {
+    gap: 15px;
+  }
+}

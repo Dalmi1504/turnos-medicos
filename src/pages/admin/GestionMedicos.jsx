@@ -516,20 +516,22 @@ function GestionMedicos() {
             />
           </div>
 
+       
           <div className="gestion-medicos-campo">
             <label>Especialidad</label>
 
-            <input
-              type="text"
+            <select
               name="especialidad"
               value={formulario.especialidad}
               onChange={handleChange}
-              placeholder="Ej: Cardiología"
-              minLength="2"
-              maxLength="100"
               required
-            />
+            >
+            <option value="">Seleccionar especialidad</option>
+            <option value="Columna">Columna</option>
+            <option value="Cardiología">Cardiología</option>
+            </select>
           </div>
+
 
           <div className="gestion-medicos-campo">
             <label>Matrícula</label>
