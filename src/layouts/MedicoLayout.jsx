@@ -1,8 +1,17 @@
 
-import { NavLink, Outlet, Navigate } from "react-router-dom";
+import {
+  NavLink,
+  Outlet,
+  Navigate,
+  useNavigate
+} from "react-router-dom";
+
+import "../styles/layout.css";
+import "../styles/medicoLayout.css";
 
 function MedicoLayout() {
-  // Recuperamos el usuario guardado al iniciar sesión
+  const navigate = useNavigate();
+
   let usuario = null;
 
   try {
@@ -11,20 +20,37 @@ function MedicoLayout() {
     usuario = null;
   }
 
-  // Comprobación provisoria del frontend
   if (!usuario || !usuario.roles?.includes("Médico")) {
     return <Navigate to="/login" replace />;
   }
 
+  const cerrarSesion = () => {
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("token");
+    localStorage.removeItem("refresh_token");
+
+    sessionStorage.removeItem("usuario");
+    sessionStorage.removeItem("access_token");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("refresh_token");
+
+    navigate("/login", { replace: true });
+  };
+
   return (
-    <div className="app-layout">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h2>Clínica UCBA</h2>
-          <p>Portal médico</p>
+    <div className="app-layout medico-layout">
+
+      {/* MENÚ LATERAL */}
+      <aside className="sidebar medico-sidebar">
+
+        <div className="sidebar-logo">
+          <h1>UCBA</h1>
+          <p>Unidad de Columna de Buenos Aires</p>
         </div>
 
         <nav className="sidebar-nav">
+
           <NavLink
             to="/medico/dashboard"
             className="sidebar-link"
@@ -45,17 +71,45 @@ function MedicoLayout() {
           >
             Historia clínica
           </NavLink>
+
         </nav>
 
-        <div className="sidebar-user">
-          <strong>{usuario.username}</strong>
-          <span>Médico</span>
-        </div>
+        {/* CERRAR SESIÓN */}
+        <button
+          type="button"
+          className="sidebar-link medico-cerrar-sesion"
+          onClick={cerrarSesion}
+        >
+          Cerrar sesión
+        </button>
+
       </aside>
 
-      <main className="main-content">
-        <Outlet />
-      </main>
+      {/* CONTENEDOR PRINCIPAL */}
+      <div className="main-container medico-main">
+
+        {/* ENCABEZADO BLANCO */}
+        <header className="header">
+
+          <div className="header-title">
+            <h2>Sistema de gestión médica</h2>
+            <p>Unidad de Columna de Buenos Aires</p>
+          </div>
+
+          <div className="header-user">
+            <strong>{usuario.username || "Médico"}</strong>
+            <span>Médico</span>
+          </div>
+
+        </header>
+
+        {/* CONTENIDO */}
+        <main className="page-content">
+          <Outlet />
+        </main>
+
+      </div>
+
     </div>
   );
 }

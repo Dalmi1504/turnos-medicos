@@ -340,6 +340,8 @@ function Turnos() {
 
   const [turnos, setTurnos] = useState([]);
   const [pacientes, setPacientes] = useState([]);
+  const [busquedaNuevoPaciente, setBusquedaNuevoPaciente] = useState("");
+  const [mostrarSugerenciasPaciente, setMostrarSugerenciasPaciente] = useState(false);
   const [medicos, setMedicos] = useState([]);
   const [estados, setEstados] = useState([]);
 
@@ -645,6 +647,32 @@ function Turnos() {
       )
     : [];
 
+  // Buscador para asignar pacientes al crear o editar un turno.
+  const textoBusquedaNuevoPaciente = normalizarTexto(busquedaNuevoPaciente);
+  const pacientesSugeridos = textoBusquedaNuevoPaciente && mostrarSugerenciasPaciente
+    ? pacientes
+        .filter((paciente) =>
+          Boolean(paciente.activo) ||
+          (idEditando && String(paciente.id_paciente) === String(nuevoTurno.id_paciente))
+        )
+        .filter((paciente) =>
+          normalizarTexto(`${paciente.nombre} ${paciente.apellido}`).includes(textoBusquedaNuevoPaciente) ||
+          normalizarTexto(`${paciente.apellido} ${paciente.nombre}`).includes(textoBusquedaNuevoPaciente) ||
+          String(paciente.dni ?? "").includes(busquedaNuevoPaciente.trim())
+        )
+        .slice(0, 5)
+    : [];
+
+  const seleccionarPacienteNuevoTurno = (paciente) => {
+    setNuevoTurno((actual) => ({
+      ...actual,
+      id_paciente: String(paciente.id_paciente)
+    }));
+    setBusquedaNuevoPaciente(`${paciente.nombre} ${paciente.apellido}`);
+    setMostrarSugerenciasPaciente(false);
+    setErrores((actual) => ({ ...actual, id_paciente: "", turno: "" }));
+  };
+
   const pacienteSeleccionado = pacientes.find(
     (paciente) => String(paciente.id_paciente) === idPacienteSeleccionado
   );
@@ -755,6 +783,8 @@ function Turnos() {
 
   const abrirNuevoTurno = () => {
     setIdEditando(null);
+    setBusquedaNuevoPaciente("");
+    setMostrarSugerenciasPaciente(false);
 
     setNuevoTurno({
       id_paciente: "",
@@ -776,6 +806,15 @@ function Turnos() {
 
   const editarTurno = (turno) => {
     setIdEditando(turno.id_turno);
+    const pacienteDelTurno = pacientes.find(
+      (paciente) => String(paciente.id_paciente) === String(turno.id_paciente)
+    );
+    setBusquedaNuevoPaciente(
+      pacienteDelTurno
+        ? `${pacienteDelTurno.nombre} ${pacienteDelTurno.apellido}`
+        : turno.paciente || ""
+    );
+    setMostrarSugerenciasPaciente(false);
 
     setNuevoTurno({
       id_paciente: String(
@@ -803,6 +842,8 @@ function Turnos() {
 
   const cerrarFormulario = () => {
     setMostrarFormulario(false);
+    setBusquedaNuevoPaciente("");
+    setMostrarSugerenciasPaciente(false);
     setIdEditando(null);
 
     setNuevoTurno({
@@ -1203,35 +1244,67 @@ function Turnos() {
                 Paciente
               </label>
 
-              <select
-                id="id_paciente"
-                name="id_paciente"
-                value={
-                  nuevoTurno.id_paciente
-                }
-                onChange={manejarCambio}
-              >
-                <option value="">
-                  Seleccionar paciente
-                </option>
-
-                {pacientes.filter((paciente) =>
-                  Boolean(paciente.activo) ||
-                  (idEditando && String(paciente.id_paciente) === nuevoTurno.id_paciente)
-                ).map((paciente) => (
-                  <option
-                    key={
-                      paciente.id_paciente
-                    }
-                    value={
-                      paciente.id_paciente
-                    }
+              <div style={{ position: "relative" }}>
+                <input
+                  id="id_paciente"
+                  type="search"
+                  autoComplete="off"
+                  value={busquedaNuevoPaciente}
+                  placeholder="Buscar por nombre, apellido o DNI"
+                  aria-label="Buscar paciente para el turno"
+                  aria-expanded={mostrarSugerenciasPaciente && pacientesSugeridos.length > 0}
+                  onChange={(evento) => {
+                    setBusquedaNuevoPaciente(evento.target.value);
+                    setMostrarSugerenciasPaciente(true);
+                    setNuevoTurno((actual) => ({ ...actual, id_paciente: "" }));
+                    setErrores((actual) => ({ ...actual, id_paciente: "" }));
+                  }}
+                  onFocus={() => {
+                    if (!nuevoTurno.id_paciente) setMostrarSugerenciasPaciente(true);
+                  }}
+                  onKeyDown={(evento) => {
+                    if (evento.key === "Escape") setMostrarSugerenciasPaciente(false);
+                  }}
+                  style={{ width: "100%", boxSizing: "border-box" }}
+                />
+                {mostrarSugerenciasPaciente && textoBusquedaNuevoPaciente && (
+                  <div
+                    style={{
+                      position: "absolute", top: "calc(100% + 4px)", left: 0,
+                      right: 0, zIndex: 1000, background: "#fff",
+                      border: "1px solid #cbd5e1", borderRadius: "8px",
+                      boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
+                      maxHeight: "260px", overflowY: "auto"
+                    }}
                   >
-                    {paciente.nombre}{" "}
-                    {paciente.apellido}
-                  </option>
-                ))}
-              </select>
+                    {pacientesSugeridos.length > 0 ? pacientesSugeridos.map((paciente) => (
+                      <button
+                        key={paciente.id_paciente}
+                        type="button"
+                        onClick={() => seleccionarPacienteNuevoTurno(paciente)}
+                        style={{
+                          display: "block", width: "100%", textAlign: "left",
+                          padding: "11px 12px", background: "#fff",
+                          border: "none", borderBottom: "1px solid #e2e8f0",
+                          cursor: "pointer", color: "#243447"
+                        }}
+                      >
+                        <strong>{paciente.nombre} {paciente.apellido}</strong>
+                        {paciente.dni ? ` — DNI: ${paciente.dni}` : ""}
+                      </button>
+                    )) : (
+                      <p style={{ padding: "12px", margin: 0, color: "#64748b" }}>
+                        No se encontraron pacientes.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+              {nuevoTurno.id_paciente && (
+                <small style={{ display: "block", marginTop: "6px", color: "#15803d" }}>
+                  Paciente seleccionado
+                </small>
+              )}
 
               {errores.id_paciente && (
                 <span className="turno-error">

@@ -1,5 +1,12 @@
+
+/* ==========================================
+   HISTORIA CLÍNICA - ESTRUCTURA GENERAL
+   ========================================== */
+
 .historia-page {
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .historia-header {
@@ -13,15 +20,13 @@
 }
 
 .historia-header p {
-  margin-top: 6px;
+  margin: 6px 0 0;
   color: #6b7280;
 }
 
-.historia-header-detalle {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+/* ==========================================
+   BUSCADOR Y TABLA DE PACIENTES
+   ========================================== */
 
 .historia-search-container {
   margin-bottom: 20px;
@@ -34,19 +39,24 @@
   border: 1px solid #d9dee7;
   border-radius: 10px;
   background: #ffffff;
+  color: #24344b;
+  font-family: inherit;
   font-size: 14px;
   outline: none;
+  box-sizing: border-box;
 }
 
 .historia-search:focus {
   border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
 }
 
 .historia-table-container {
+  width: 100%;
   background: #ffffff;
   border: 1px solid #e6eaf0;
   border-radius: 14px;
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .historia-table {
@@ -55,12 +65,12 @@
 }
 
 .historia-table th {
-  text-align: left;
   padding: 14px 16px;
   background: #f8fafc;
   color: #475569;
   font-size: 13px;
   font-weight: 600;
+  text-align: left;
 }
 
 .historia-table td {
@@ -70,209 +80,628 @@
   font-size: 14px;
 }
 
+.historia-sin-resultados {
+  padding: 30px !important;
+  color: #94a3b8;
+  text-align: center;
+}
+
+/* ==========================================
+   BOTONES
+   ========================================== */
+
 .historia-btn-primary {
+  min-height: 42px;
+  padding: 11px 22px;
   border: none;
+  border-radius: 9px;
   background: #0ea5e9;
   color: #ffffff;
-  padding: 9px 14px;
-  border-radius: 8px;
-  cursor: pointer;
+  font-family: inherit;
   font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
 }
 
 .historia-btn-primary:hover {
   background: #0284c7;
 }
 
+.historia-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .historia-btn-volver {
+  display: inline-block;
+  margin-bottom: 18px;
+  padding: 0;
   border: none;
   background: transparent;
   color: #0284c7;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  padding: 0;
-  margin-bottom: 12px;
 }
 
-.historia-sin-resultados {
-  text-align: center;
-  color: #94a3b8;
-  padding: 30px !important;
-}
-
-.historia-tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 22px;
-}
-
-.historia-tab {
-  border: 1px solid #d7dde5;
-  background: #ffffff;
-  color: #475569;
-  padding: 9px 18px;
-  border-radius: 9px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.historia-tab.activo {
-  background: #e0f2fe;
-  border-color: #7dd3fc;
-  color: #0369a1;
-}
-
-.historia-resumen-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 18px;
-}
+/* ==========================================
+   TARJETAS GENERALES
+   ========================================== */
 
 .historia-card {
-  background: #ffffff;
+  min-width: 0;
+  padding: 22px;
   border: 1px solid #e6eaf0;
   border-radius: 14px;
-  padding: 20px;
+  background: #ffffff;
+  box-sizing: border-box;
 }
 
 .historia-card h3 {
-  margin: 0 0 18px 0;
-  font-size: 16px;
+  margin: 0 0 16px;
   color: #172033;
+  font-size: 16px;
 }
 
-.historia-card-observaciones {
-  grid-column: 1 / -1;
+.historia-contenido-clinico {
+  margin: 0;
+  color: #334155;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.historia-dato {
+.historia-mensaje {
+  margin-bottom: 16px;
+  padding: 24px;
+  border: 1px solid #e6eaf0;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #64748b;
+  text-align: center;
+}
+
+/* ==========================================
+   FICHA SUPERIOR COMPACTA DEL PACIENTE
+   ========================================== */
+
+.historia-page .historia-paciente-compacto {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 20px;
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f2f5;
+  width: 100%;
+  margin-bottom: 20px;
+  padding: 20px 26px;
 }
 
-.historia-dato:last-child {
-  border-bottom: none;
+.historia-paciente-identidad {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
 }
 
-.historia-dato span {
+.historia-paciente-icono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.historia-paciente-etiqueta {
+  display: block;
+  margin-bottom: 5px;
   color: #64748b;
   font-size: 13px;
 }
 
-.historia-dato strong {
-  color: #1e293b;
-  font-size: 13px;
+.historia-page .historia-paciente-compacto h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 20px;
+}
+
+.historia-paciente-documento {
   text-align: right;
 }
 
-.historia-bloque {
-  margin-bottom: 20px;
-}
-
-.historia-bloque:last-child {
-  margin-bottom: 0;
-}
-
-.historia-bloque span {
+.historia-paciente-documento span {
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: 5px;
   color: #64748b;
   font-size: 13px;
-  font-weight: 600;
 }
 
-.historia-bloque p,
-.historia-card-observaciones p {
+.historia-paciente-documento strong {
+  display: block;
+  color: #172033;
+  font-size: 16px;
+}
+
+/* ==========================================
+   NAVEGACIÓN SUPERIOR - OPCIÓN 4
+   ========================================== */
+
+.historia-page .historia-navegacion {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: 100%;
+  margin-bottom: 26px;
+  border-bottom: 1px solid #dce5ef;
+  background: #f8fafc;
+  box-sizing: border-box;
+}
+
+.historia-page .historia-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
   margin: 0;
-  color: #334155;
-  line-height: 1.6;
 }
 
-.historia-fecha-creacion {
-  margin-top: 18px;
-  font-size: 12px;
-  color: #94a3b8;
+.historia-page .historia-tab {
+  position: relative;
+  min-height: 52px;
+  padding: 14px 24px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
 }
 
-.historia-evoluciones {
+.historia-page .historia-tab:hover {
+  color: #0284c7;
+}
+
+.historia-page .historia-tab.activo {
+  border-bottom-color: #0ea5e9;
+  color: #0369a1;
+  background: transparent;
+}
+
+.historia-page .historia-tab:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: -3px;
+  border-radius: 6px;
+}
+
+/* ==========================================
+   TÍTULOS DE LAS SECCIONES
+   ========================================== */
+
+.historia-page .historia-seccion {
+  width: 100%;
+  min-width: 0;
+}
+
+.historia-seccion-titulo {
+  margin-bottom: 22px;
+}
+
+.historia-seccion-titulo h2 {
+  margin: 0 0 7px;
+  color: #172033;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.historia-seccion-titulo p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* ==========================================
+   RESUMEN CLÍNICO
+   ========================================== */
+
+.historia-page .historia-resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+.historia-page .historia-resumen-grid > .historia-card {
+  min-width: 0;
+  min-height: 160px;
+  padding: 26px;
+}
+
+.historia-page .historia-resumen-grid > .historia-card h3 {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #edf0f4;
+  color: #172033;
+  font-size: 16px;
+}
+
+.historia-page .historia-resumen-grid
+.historia-card-observaciones {
+  grid-column: 1 / -1;
+  min-height: 130px;
+}
+
+/* ==========================================
+   EVOLUCIONES REGISTRADAS
+   ========================================== */
+
+.historia-page .historia-evoluciones {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 22px;
+  width: 100%;
 }
 
-.historia-evolucion-card {
-  background: #ffffff;
+.historia-page .historia-evolucion-card {
+  width: 100%;
+  min-width: 0;
+  padding: 26px;
   border: 1px solid #e6eaf0;
   border-radius: 14px;
-  padding: 20px;
+  background: #ffffff;
+  box-sizing: border-box;
 }
 
 .historia-evolucion-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
-  padding-bottom: 14px;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding-bottom: 16px;
   border-bottom: 1px solid #edf0f4;
 }
 
 .historia-evolucion-header div {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .historia-evolucion-header strong {
   color: #172033;
+  font-size: 16px;
 }
 
 .historia-evolucion-header span {
   color: #94a3b8;
-  font-size: 12px;
+  font-size: 13px;
 }
 
-.historia-evolucion-grid {
+.historia-evolucion-descripcion {
+  margin-bottom: 20px;
+  padding: 20px;
+  border: 1px solid #e6eaf0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.historia-evolucion-descripcion h3 {
+  margin: 0 0 12px;
+  color: #24344b;
+  font-size: 14px;
+}
+
+.historia-evolucion-descripcion p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.historia-page .historia-evolucion-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
+  width: 100%;
+}
+
+.historia-page .historia-evolucion-grid > div {
+  min-width: 0;
+  min-height: 120px;
+  padding: 20px;
+  border: 1px solid #e6eaf0;
+  border-radius: 10px;
+  background: #f8fafc;
+  box-sizing: border-box;
 }
 
 .historia-evolucion-grid span {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 12px;
   color: #64748b;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .historia-evolucion-grid p {
   margin: 0;
   color: #334155;
-  line-height: 1.5;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.historia-mensaje {
-  background: #ffffff;
-  border: 1px solid #e6eaf0;
-  border-radius: 14px;
-  padding: 30px;
-  text-align: center;
-  color: #64748b;
+/* ==========================================
+   FORMULARIOS - ESTILOS COMPARTIDOS
+   ========================================== */
+
+.historia-page .historia-card form .historia-bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  margin: 0;
 }
+
+.historia-page .historia-card form .historia-bloque label {
+  display: block;
+  color: #24344b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.historia-page .historia-card form .historia-bloque textarea {
+  display: block;
+  width: 100%;
+  max-width: none;
+  min-height: 110px;
+  padding: 14px 16px;
+  border: 1px solid #d8e1eb;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #24344b;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.historia-page .historia-card form .historia-bloque textarea:focus {
+  outline: none;
+  border-color: #16a9c7;
+  box-shadow: 0 0 0 3px rgba(22, 169, 199, 0.12);
+}
+
+/* ==========================================
+   CREACIÓN DE HISTORIA CLÍNICA
+   ========================================== */
+
+.historia-page .historia-creacion-layout {
+  display: grid;
+  grid-template-columns: minmax(230px, 1fr) minmax(0, 2fr);
+  gap: 24px;
+  align-items: start;
+  width: 100%;
+  margin-top: 12px;
+}
+
+/* Panel del paciente */
+
+.historia-page .historia-creacion-paciente {
+  padding: 30px 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  text-align: center;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04);
+}
+
+.historia-creacion-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: #e0f5fa;
+  color: #087c98;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.historia-creacion-paciente h3 {
+  margin: 0 0 24px;
+  color: #24344b;
+  font-size: 18px;
+}
+
+.historia-creacion-dato {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.historia-creacion-dato span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.historia-creacion-dato strong {
+  color: #24344b;
+}
+
+.historia-creacion-separador {
+  height: 1px;
+  margin: 24px 0;
+  background: #e2e8f0;
+}
+
+.historia-creacion-estado {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #e0f5fa;
+  color: #087c98;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.historia-creacion-paciente p {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Panel del formulario */
+
+.historia-page .historia-creacion-formulario {
+  min-width: 0;
+}
+
+.historia-creacion-formulario > p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.historia-page .historia-creacion-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  margin-top: 24px;
+}
+
+.historia-page .historia-creacion-form .historia-btn-primary {
+  align-self: flex-end;
+}
+
+/* ==========================================
+   FORMULARIO DE NUEVA EVOLUCIÓN
+   ========================================== */
+
+.historia-page .historia-nueva-evolucion {
+  width: 100%;
+  padding: 28px;
+}
+
+.historia-page .historia-evolucion-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+  width: 100%;
+}
+
+.historia-page .historia-evolucion-form
+.historia-campo-descripcion {
+  grid-column: 1 / -1;
+}
+
+.historia-page .historia-evolucion-form
+.historia-campo-indicaciones {
+  grid-column: 1 / -1;
+}
+
+.historia-page .historia-evolucion-form
+.historia-campo-descripcion textarea {
+  min-height: 150px;
+}
+
+.historia-page .historia-evolucion-form .historia-btn-primary {
+  grid-column: 1 / -1;
+  justify-self: end;
+  align-self: auto;
+}
+
+/* ==========================================
+   PANTALLAS MEDIANAS
+   ========================================== */
 
 @media (max-width: 900px) {
-  .historia-resumen-grid {
+  .historia-page .historia-creacion-layout {
     grid-template-columns: 1fr;
   }
 
+  .historia-page .historia-evolucion-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .historia-page .historia-evolucion-grid > div:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ==========================================
+   PANTALLAS PEQUEÑAS
+   ========================================== */
+
+@media (max-width: 768px) {
+  .historia-page .historia-resumen-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .historia-page .historia-resumen-grid
   .historia-card-observaciones {
+    grid-column: 1;
+  }
+
+  .historia-page .historia-evolucion-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .historia-page .historia-evolucion-grid > div:last-child {
     grid-column: auto;
   }
 
-  .historia-evolucion-grid {
+  .historia-page .historia-evolucion-form {
     grid-template-columns: 1fr;
+  }
+
+  .historia-page .historia-evolucion-form
+  .historia-campo-descripcion,
+  .historia-page .historia-evolucion-form
+  .historia-campo-indicaciones,
+  .historia-page .historia-evolucion-form
+  .historia-btn-primary {
+    grid-column: 1;
+  }
+
+  .historia-page .historia-tabs {
+    gap: 0;
+  }
+
+  .historia-page .historia-tab {
+    flex: 1;
+    padding: 12px 8px;
+    font-size: 12px;
+  }
+
+  .historia-page .historia-paciente-compacto {
+    padding: 18px;
+  }
+
+  .historia-paciente-documento {
+    text-align: left;
+  }
+
+  .historia-page .historia-creacion-form .historia-btn-primary,
+  .historia-page .historia-evolucion-form .historia-btn-primary {
+    width: 100%;
   }
 }

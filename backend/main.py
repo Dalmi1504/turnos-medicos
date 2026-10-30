@@ -174,7 +174,8 @@ def conectar_db():
         host="localhost",
         user="root",
         password="",
-        database="clinica"
+        database="clinica",
+        use_pure=True
     )
 
     return conexion
