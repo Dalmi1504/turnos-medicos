@@ -28,12 +28,24 @@ import GestionMedicos from "./pages/admin/GestionMedicos";
 // LOGIN
 import Login from "./pages/Login";
 
-// PACIENTE - ARCHIVOS DE MAGGIE
+// PACIENTE
 import Registro from "./pages/Registro";
 import PortalPaciente from "./pages/PortalPaciente";
 import MisTurnosPaciente from "./pages/MisTurnosPaciente";
 import SolicitarTurnoPaciente from "./pages/SolicitarTurnoPaciente";
+
+// RECUPERACIÓN DE CONTRASEÑA
 import RecuperarPassword from "./pages/RecuperarPassword";
+import RestablecerPassword from "./pages/RestablecerPassword";
+
+// RECUPERACIÓN DE CUENTA Y CORREO
+import RecuperarCuenta from "./pages/RecuperarCuenta";
+import RecuperarCorreo from "./pages/RecuperarCorreo";
+import ConfirmarRecuperacionEmail from "./pages/ConfirmarRecuperacionEmail";
+
+// CORREO DE RESPALDO
+import VerificarCorreoRespaldo from "./pages/VerificarCorreoRespaldo";
+import CorreoRespaldo from "./pages/CorreoRespaldo";
 
 // =============================================
 // OBTENER USUARIO GUARDADO
@@ -68,7 +80,6 @@ function rutaInicial(usuario) {
     return "/medico/dashboard";
   }
 
-  // NUEVO: PACIENTE
   if (roles.includes("Paciente")) {
     return "/portal-paciente";
   }
@@ -135,10 +146,40 @@ function App() {
         {/* REGISTRO PÚBLICO DE PACIENTES */}
         <Route path="/registro" element={<Registro />} />
 
+        {/* ELEGIR TIPO DE RECUPERACIÓN */}
+        <Route
+          path="/recuperar-cuenta"
+          element={<RecuperarCuenta />}
+        />
+
         {/* RECUPERACIÓN DE CONTRASEÑA */}
         <Route
           path="/recuperar-password"
           element={<RecuperarPassword />}
+        />
+
+        {/* RESTABLECER CONTRASEÑA DESDE GMAIL */}
+        <Route
+          path="/restablecer-password"
+          element={<RestablecerPassword />}
+        />
+
+        {/* SOLICITAR RECUPERACIÓN DEL CORREO PRINCIPAL */}
+        <Route
+          path="/recuperar-correo"
+          element={<RecuperarCorreo />}
+        />
+
+        {/* CONFIRMAR RECUPERACIÓN DEL CORREO PRINCIPAL */}
+        <Route
+          path="/confirmar-recuperacion-email"
+          element={<ConfirmarRecuperacionEmail />}
+        />
+
+        {/* VERIFICAR CORREO DE RESPALDO DESDE GMAIL */}
+        <Route
+          path="/verificar-correo-respaldo"
+          element={<VerificarCorreoRespaldo />}
         />
 
         {/* SECRETARÍA Y ADMINISTRACIÓN */}
@@ -157,10 +198,12 @@ function App() {
           <Route path="/turnos" element={<Turnos />} />
           <Route path="/agenda" element={<Agenda />} />
           <Route path="/recepcion" element={<Recepcion />} />
+
           <Route
             path="/historia-clinica"
             element={<HistoriaClinica />}
           />
+
           <Route path="/coberturas" element={<Coberturas />} />
 
           {/* SOLO ADMINISTRADOR */}
@@ -240,6 +283,16 @@ function App() {
           element={
             <RutaProtegida rolesPermitidos={["Paciente"]}>
               <SolicitarTurnoPaciente />
+            </RutaProtegida>
+          }
+        />
+
+        {/* ADMINISTRAR CORREO DE RESPALDO */}
+        <Route
+          path="/portal-paciente/correo-respaldo"
+          element={
+            <RutaProtegida rolesPermitidos={["Paciente"]}>
+              <CorreoRespaldo />
             </RutaProtegida>
           }
         />

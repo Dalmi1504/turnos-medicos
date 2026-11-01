@@ -174,11 +174,12 @@ function Login() {
 
         </form>
 
-        {/* RECUPERAR CONTRASEÑA */}
+        {/* RECUPERACIÓN DE CUENTA */}
+        {/* Permite recuperar contraseña o correo electrónico */}
 
         <div className="login-recuperar">
-          <Link to="/recuperar-password">
-            ¿Olvidaste tu contraseña?
+          <Link to="/recuperar-cuenta">
+            ¿Olvidaste tu contraseña o tu correo electrónico?
           </Link>
         </div>
 

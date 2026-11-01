@@ -37,13 +37,11 @@ function PortalPaciente() {
 
   return (
     <div className="portal-paciente-contenedor">
-
       <main className="portal-paciente">
 
         {/* ENCABEZADO */}
 
         <header className="portal-paciente-header">
-
           <div className="portal-paciente-bienvenida">
             <h1>Portal del Paciente</h1>
 
@@ -62,7 +60,6 @@ function PortalPaciente() {
           >
             Cerrar sesión
           </button>
-
         </header>
 
         {/* INTRODUCCIÓN */}
@@ -72,8 +69,9 @@ function PortalPaciente() {
 
           <p>
             Desde este espacio podés consultar tus
-            turnos programados y solicitar nuevas
-            consultas médicas.
+            turnos programados, solicitar nuevas
+            consultas médicas y administrar la
+            seguridad de tu cuenta.
           </p>
         </section>
 
@@ -84,7 +82,6 @@ function PortalPaciente() {
           {/* MIS TURNOS */}
 
           <article className="portal-paciente-card">
-
             <div className="portal-paciente-icono">
               📅
             </div>
@@ -106,13 +103,11 @@ function PortalPaciente() {
             >
               Ver mis turnos
             </button>
-
           </article>
 
           {/* SOLICITAR TURNO */}
 
           <article className="portal-paciente-card">
-
             <div className="portal-paciente-icono">
               ➕
             </div>
@@ -134,13 +129,37 @@ function PortalPaciente() {
             >
               Sacar turno
             </button>
+          </article>
 
+          {/* CORREO DE RESPALDO - NUEVO */}
+
+          <article className="portal-paciente-card">
+            <div className="portal-paciente-icono">
+              🔐
+            </div>
+
+            <h3>Mi correo de respaldo</h3>
+
+            <p>
+              Registrá o actualizá un correo
+              alternativo para proteger tu cuenta.
+              También podés utilizar el correo
+              de un familiar de confianza.
+            </p>
+
+            <button
+              type="button"
+              className="portal-paciente-boton"
+              onClick={() =>
+                navigate("/portal-paciente/correo-respaldo")
+              }
+            >
+              Administrar correo
+            </button>
           </article>
 
         </section>
-
       </main>
-
     </div>
   );
 }

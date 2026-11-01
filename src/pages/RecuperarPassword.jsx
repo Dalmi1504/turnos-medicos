@@ -1,81 +1,280 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
 
 function RecuperarPassword() {
-  const [email, setEmail] = useState('');
-  const [dni, setDni] = useState('');
-  const [nuevaPassword, setNuevaPassword] = useState('');
-  const [mensaje, setMensaje] = useState('');
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const [error, setError] = useState("");
+  const [cargando, setCargando] = useState(false);
+
+  // ==========================================
+  // SOLICITAR RECUPERACIÓN DE CONTRASEÑA
+  // ==========================================
 
   const manejarRecuperacion = async (e) => {
     e.preventDefault();
-    setError('');
-    setMensaje('');
 
-    if (nuevaPassword.length < 6) {
-      setError('La nueva contraseña debe tener al menos 6 caracteres.');
-      return;
-    }
+    setError("");
+    setMensaje("");
+    setCargando(true);
 
     try {
-      const respuesta = await fetch('http://127.0.0.1:8000/api/recuperar-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, dni, nueva_password: nuevaPassword }),
-      });
+      const respuesta = await fetch(
+        "http://127.0.0.1:8000/api/recuperar-password",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+          }),
+        }
+      );
 
-      const data = await respuesta.json();
-
-      if (respuesta.ok) {
-        setMensaje('¡Contraseña restablecida con éxito! Redirigiendo al login...');
-        setTimeout(() => navigate('/login'), 2500);
-      } else {
-        setError(data.detail || 'Ocurrió un error al restablecer la contraseña.');
+      if (!respuesta.ok) {
+        throw new Error("No se pudo procesar la solicitud.");
       }
+
+      setMensaje(
+        "Si el correo está registrado, recibirás un enlace para recuperar tu contraseña. Revisá también la carpeta de spam."
+      );
+
+      setEmail("");
     } catch (err) {
-      console.error('Error de red:', err);
-      setError('No se pudo conectar con el servidor.');
+      console.error("Error al solicitar recuperación:", err);
+
+      setError(
+        "No se pudo procesar la solicitud. Intentá nuevamente más tarde."
+      );
+    } finally {
+      setCargando(false);
     }
   };
 
+  // ==========================================
+  // INTERFAZ
+  // ==========================================
+
   return (
-    <div style={{ maxWidth: '400px', margin: '60px auto', padding: '20px', border: '1px solid #ddd', borderRadius: '8px', background: '#fff', fontFamily: 'Arial, sans-serif' }}>
-      <h2>Recuperar Contraseña</h2>
-      <p style={{ fontSize: '13px', color: '#666', marginBottom: '15px' }}>
-        Ingresa tu correo electrónico y tu DNI para verificar tu identidad y cambiar tu contraseña.
-      </p>
+    <div style={estilos.contenedor}>
+      <main style={estilos.tarjeta}>
 
-      <form onSubmit={manejarRecuperacion}>
-        <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', marginBottom: '4px' }}>Correo electrónico:</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
-        </div>
+        <h1 style={estilos.titulo}>UCBA</h1>
 
-        <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', marginBottom: '4px' }}>DNI:</label>
-          <input type="text" value={dni} onChange={(e) => setDni(e.target.value)} required style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
-        </div>
+        <p style={estilos.subtitulo}>
+          Sistema de Gestión Médica
+        </p>
 
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '4px' }}>Nueva Contraseña:</label>
-          <input type="password" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)} required style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
-        </div>
+        <div style={estilos.icono}>🔐</div>
 
-        {error && <p style={{ color: 'red', fontSize: '14px', marginBottom: '15px' }}>{error}</p>}
-        {mensaje && <p style={{ color: 'green', fontSize: '14px', marginBottom: '15px' }}>{mensaje}</p>}
+        <h2 style={estilos.encabezado}>
+          Recuperar contraseña
+        </h2>
 
-        <button type="submit" style={{ width: '100%', padding: '10px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-          Actualizar Contraseña
-        </button>
-      </form>
+        <p style={estilos.descripcion}>
+          Ingresá el correo electrónico asociado a tu cuenta
+          de UCBA. Si está registrado, te enviaremos un enlace
+          para crear una contraseña nueva.
+        </p>
 
-      <p style={{ marginTop: '15px', textAlign: 'center', fontSize: '14px' }}>
-        <Link to="/login">← Volver al Login</Link>
-      </p>
+        <form onSubmit={manejarRecuperacion}>
+
+          {/* CORREO ELECTRÓNICO */}
+
+          <label
+            htmlFor="email-recuperacion"
+            style={estilos.label}
+          >
+            Correo electrónico
+          </label>
+
+          <input
+            id="email-recuperacion"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="ejemplo@correo.com"
+            autoComplete="email"
+            required
+            disabled={cargando}
+            style={estilos.input}
+          />
+
+          {/* MENSAJES */}
+
+          {error && (
+            <p style={estilos.error} role="alert">
+              {error}
+            </p>
+          )}
+
+          {mensaje && (
+            <p style={estilos.exito} role="status">
+              {mensaje}
+            </p>
+          )}
+
+          {/* BOTÓN DE RECUPERACIÓN */}
+
+          <button
+            type="submit"
+            disabled={cargando}
+            style={{
+              ...estilos.boton,
+              cursor: cargando ? "not-allowed" : "pointer",
+              opacity: cargando ? 0.7 : 1,
+            }}
+          >
+            {cargando
+              ? "Enviando solicitud..."
+              : "Enviar enlace de recuperación"}
+          </button>
+
+        </form>
+
+        {/* OPCIONES PARA VOLVER */}
+
+        <nav
+          style={estilos.navegacion}
+          aria-label="Opciones de navegación"
+        >
+          <Link
+            to="/recuperar-cuenta"
+            style={estilos.enlace}
+          >
+            ← Volver a recuperación de cuenta
+          </Link>
+
+          <Link
+            to="/login"
+            style={estilos.enlace}
+          >
+            ← Volver al inicio de sesión
+          </Link>
+        </nav>
+
+      </main>
     </div>
   );
 }
+
+// ==========================================
+// ESTILOS DE LA PANTALLA
+// ==========================================
+
+const estilos = {
+  contenedor: {
+    minHeight: "100vh",
+    backgroundColor: "#f2f5fb",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: "20px",
+    boxSizing: "border-box",
+    fontFamily: "Arial, sans-serif",
+  },
+
+  tarjeta: {
+    backgroundColor: "#ffffff",
+    padding: "40px",
+    borderRadius: "12px",
+    width: "100%",
+    maxWidth: "420px",
+    boxSizing: "border-box",
+    textAlign: "center",
+    boxShadow: "0 4px 15px rgba(0,0,0,0.08)",
+  },
+
+  titulo: {
+    color: "#17233b",
+    fontSize: "32px",
+    marginBottom: "8px",
+  },
+
+  subtitulo: {
+    color: "#64748b",
+    fontSize: "14px",
+    marginBottom: "28px",
+  },
+
+  icono: {
+    fontSize: "42px",
+    marginBottom: "14px",
+  },
+
+  encabezado: {
+    color: "#17233b",
+    fontSize: "23px",
+    marginBottom: "12px",
+  },
+
+  descripcion: {
+    color: "#475569",
+    fontSize: "14px",
+    lineHeight: "1.6",
+    marginBottom: "26px",
+  },
+
+  label: {
+    display: "block",
+    textAlign: "left",
+    color: "#17233b",
+    fontSize: "14px",
+    fontWeight: "bold",
+    marginBottom: "8px",
+  },
+
+  input: {
+    width: "100%",
+    padding: "12px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "7px",
+    marginBottom: "20px",
+    boxSizing: "border-box",
+    fontSize: "14px",
+  },
+
+  boton: {
+    width: "100%",
+    padding: "13px",
+    backgroundColor: "#16a6bf",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "8px",
+    fontSize: "14px",
+    fontWeight: "bold",
+  },
+
+  error: {
+    color: "#b91c1c",
+    fontSize: "14px",
+    lineHeight: "1.5",
+    marginBottom: "18px",
+  },
+
+  exito: {
+    color: "#166534",
+    fontSize: "14px",
+    lineHeight: "1.6",
+    marginBottom: "18px",
+  },
+
+  navegacion: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "16px",
+    marginTop: "26px",
+  },
+
+  enlace: {
+    color: "#0891b2",
+    textDecoration: "none",
+    fontSize: "14px",
+    fontWeight: "bold",
+  },
+};
 
 export default RecuperarPassword;
