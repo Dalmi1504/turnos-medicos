@@ -13,7 +13,6 @@ import Turnos from "./pages/secretaria/Turnos";
 import Agenda from "./pages/secretaria/Agenda";
 import HistoriaClinica from "./pages/secretaria/HistoriaClinica";
 import Coberturas from "./pages/secretaria/Coberturas";
-import Usuarios from "./pages/Usuarios";
 import Recepcion from "./pages/secretaria/Recepcion";
 
 // MÉDICO
@@ -204,18 +203,12 @@ function App() {
             element={<HistoriaClinica />}
           />
 
-          <Route path="/coberturas" element={<Coberturas />} />
-
-          {/* SOLO ADMINISTRADOR */}
           <Route
-            path="/usuarios"
-            element={
-              <RutaProtegida rolesPermitidos={["Administrador"]}>
-                <Usuarios />
-              </RutaProtegida>
-            }
+            path="/coberturas"
+            element={<Coberturas />}
           />
 
+          {/* SOLO ADMINISTRADOR */}
           <Route
             path="/admin/bloqueos-agenda"
             element={

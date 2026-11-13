@@ -39,12 +39,12 @@ function formatearFecha(fecha) {
     .join("/");
 }
 
-function CalendarioDesplegable({ fecha, onChange }) {
+function CalendarioDesplegable({ fecha, onChange, compacto = false }) {
   const [abierto, setAbierto] = useState(false);
   const contenedorRef = useRef(null);
 
   const [mesVisible, setMesVisible] = useState(() => {
-    const [anio, mes] = fecha.split("-").map(Number);
+    const [anio, mes] = (fecha || obtenerFechaLocal()).split("-").map(Number);
     return new Date(anio, mes - 1, 1);
   });
 
@@ -179,7 +179,7 @@ function CalendarioDesplegable({ fecha, onChange }) {
             position: "absolute",
             top: "calc(100% + 8px)",
             left: 0,
-            width: "350px",
+            width: compacto ? "290px" : "350px",
             maxWidth: "calc(100vw - 40px)",
             padding: "18px",
             borderRadius: "12px",
@@ -279,7 +279,7 @@ function CalendarioDesplegable({ fecha, onChange }) {
                   onClick={() => seleccionarDia(dia)}
                   aria-label={`Seleccionar ${dia} de ${mes + 1} de ${anio}`}
                   style={{
-                    height: "40px",
+                    height: compacto ? "34px" : "40px",
                     borderRadius: "8px",
                     border: esHoy
                       ? "2px solid #0ea5e9"
@@ -1398,12 +1398,22 @@ function Turnos() {
                 Fecha
               </label>
 
-              <input
-                id="fecha"
-                name="fecha"
-                type="date"
-                value={nuevoTurno.fecha}
-                onChange={manejarCambio}
+              <CalendarioDesplegable
+                compacto
+                fecha={nuevoTurno.fecha}
+                onChange={(fechaElegida) => {
+                  setNuevoTurno((actual) => ({
+                    ...actual,
+                    fecha: fechaElegida,
+                    hora: ""
+                  }));
+                  setErrores((actual) => ({
+                    ...actual,
+                    fecha: "",
+                    hora: "",
+                    turno: ""
+                  }));
+                }}
               />
 
               {errores.fecha && (

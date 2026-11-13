@@ -101,13 +101,6 @@ function MainLayout() {
               >
                 Bloqueos de agenda
               </NavLink>
-
-              <NavLink
-                className="sidebar-link"
-                to="/usuarios"
-              >
-                Usuarios
-              </NavLink>
             </>
           )}
 

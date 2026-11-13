@@ -32,7 +32,7 @@ function RecuperarCuenta() {
 
         <Link
           to="/recuperar-correo"
-          style={estilos.botonSecundario}
+          style={estilos.boton}
         >
           Olvidé mi correo electrónico
         </Link>
@@ -53,60 +53,64 @@ const estilos = {
     justifyContent: "center",
     alignItems: "center",
     padding: "20px",
+    boxSizing: "border-box",
     fontFamily: "Arial, sans-serif",
   },
+
   tarjeta: {
     backgroundColor: "#ffffff",
     padding: "40px",
     borderRadius: "12px",
     width: "100%",
     maxWidth: "420px",
+    boxSizing: "border-box",
     textAlign: "center",
     boxShadow: "0 4px 15px rgba(0,0,0,0.08)",
   },
+
   titulo: {
     color: "#17233b",
     fontSize: "32px",
     marginBottom: "8px",
   },
+
   subtitulo: {
     color: "#64748b",
     marginBottom: "28px",
   },
+
   icono: {
     fontSize: "44px",
     marginBottom: "15px",
   },
+
   encabezado: {
     color: "#17233b",
     fontSize: "23px",
   },
+
   descripcion: {
     color: "#475569",
     fontSize: "14px",
     lineHeight: "1.6",
     marginBottom: "28px",
   },
+
   boton: {
     display: "block",
     padding: "14px",
     backgroundColor: "#16a6bf",
     color: "#ffffff",
+    border: "none",
     borderRadius: "8px",
     textDecoration: "none",
     fontWeight: "bold",
+    fontSize: "14px",
     marginBottom: "14px",
+    textAlign: "center",
+    cursor: "pointer",
   },
-  botonSecundario: {
-    display: "block",
-    padding: "14px",
-    backgroundColor: "#e0f2fe",
-    color: "#0e7490",
-    border: "1px solid #7dd3fc",
-    borderRadius: "8px",
-    textDecoration: "none",
-    fontWeight: "bold",
-  },
+
   volver: {
     display: "inline-block",
     marginTop: "24px",

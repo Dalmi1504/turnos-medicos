@@ -47,6 +47,11 @@ function HistoriaClinicaMedico() {
   const [historias, setHistorias] = useState([]);
   const [paciente, setPaciente] = useState(null);
   const [busqueda, setBusqueda] = useState("");
+
+  // PAGINACIÓN
+  const [paginaActual, setPaginaActual] = useState(1);
+  const historiasPorPagina = 10;
+
   const [historiaSeleccionada, setHistoriaSeleccionada] = useState(null);
   const [creando, setCreando] = useState(false);
   const [formHistoria, setFormHistoria] = useState(inicial);
@@ -68,6 +73,10 @@ function HistoriaClinicaMedico() {
 
   const idMedico = Number(usuario?.id_medico);
 
+  // =============================================
+  // CARGAR HISTORIAS CLÍNICAS
+  // =============================================
+
   const cargarHistorias = useCallback(async () => {
     const datos = await leerRespuesta(
       await fetch(`${API}/historias-clinicas`)
@@ -78,6 +87,10 @@ function HistoriaClinicaMedico() {
     return datos;
   }, []);
 
+  // =============================================
+  // CARGAR EVOLUCIONES
+  // =============================================
+
   const cargarEvoluciones = useCallback(async (idHC) => {
     const datos = await leerRespuesta(
       await fetch(`${API}/historias-clinicas/${idHC}/evoluciones`)
@@ -85,6 +98,10 @@ function HistoriaClinicaMedico() {
 
     setEvoluciones(Array.isArray(datos) ? datos : []);
   }, []);
+
+  // =============================================
+  // VER HISTORIA CLÍNICA
+  // =============================================
 
   const verHistoria = useCallback(
     async (idPaciente) => {
@@ -102,6 +119,10 @@ function HistoriaClinicaMedico() {
     },
     [cargarEvoluciones]
   );
+
+  // =============================================
+  // INICIALIZAR PANTALLA
+  // =============================================
 
   useEffect(() => {
     let activo = true;
@@ -198,6 +219,10 @@ function HistoriaClinicaMedico() {
     cargarHistorias
   ]);
 
+  // =============================================
+  // BUSCADOR ORIGINAL
+  // =============================================
+
   const normalizar = (texto) =>
     String(texto || "")
       .normalize("NFD")
@@ -210,6 +235,55 @@ function HistoriaClinicaMedico() {
     )
   );
 
+  // =============================================
+  // ORDEN Y PAGINACIÓN
+  // =============================================
+
+  const historiasOrdenadas = [...historiasFiltradas].sort(
+    (a, b) => {
+      const apellidoA = normalizar(a.apellido);
+      const apellidoB = normalizar(b.apellido);
+
+      const comparacionApellido =
+        apellidoA.localeCompare(apellidoB, "es");
+
+      if (comparacionApellido !== 0) {
+        return comparacionApellido;
+      }
+
+      return normalizar(a.nombre).localeCompare(
+        normalizar(b.nombre),
+        "es"
+      );
+    }
+  );
+
+  const totalPaginas = Math.ceil(
+    historiasOrdenadas.length / historiasPorPagina
+  );
+
+  const paginaVisible = Math.min(
+    paginaActual,
+    Math.max(1, totalPaginas)
+  );
+
+  const indiceInicio =
+    (paginaVisible - 1) * historiasPorPagina;
+
+  const historiasVisibles = historiasOrdenadas.slice(
+    indiceInicio,
+    indiceInicio + historiasPorPagina
+  );
+
+  const cambiarBusqueda = (e) => {
+    setBusqueda(e.target.value);
+    setPaginaActual(1);
+  };
+
+  // =============================================
+  // VOLVER AL LISTADO
+  // =============================================
+
   function volver() {
     setParams({});
     setHistoriaSeleccionada(null);
@@ -219,6 +293,10 @@ function HistoriaClinicaMedico() {
     setError("");
     setMensaje("");
   }
+
+  // =============================================
+  // GUARDAR HISTORIA CLÍNICA
+  // =============================================
 
   async function guardarHistoria(e) {
     e.preventDefault();
@@ -238,8 +316,10 @@ function HistoriaClinicaMedico() {
           },
           body: JSON.stringify({
             id_paciente: paciente.id_paciente,
-            antecedentes: formHistoria.antecedentes.trim() || null,
-            alergias: formHistoria.alergias.trim() || null,
+            antecedentes:
+              formHistoria.antecedentes.trim() || null,
+            alergias:
+              formHistoria.alergias.trim() || null,
             observaciones_generales:
               formHistoria.observaciones_generales.trim() || null
           })
@@ -264,6 +344,10 @@ function HistoriaClinicaMedico() {
       setGuardando(false);
     }
   }
+
+  // =============================================
+  // GUARDAR EVOLUCIÓN MÉDICA
+  // =============================================
 
   async function guardarEvolucion(e) {
     e.preventDefault();
@@ -296,9 +380,12 @@ function HistoriaClinicaMedico() {
             id_medico: idMedico,
             id_turno: null,
             descripcion: formulario.descripcion.trim(),
-            diagnostico: formulario.diagnostico.trim() || null,
-            tratamiento: formulario.tratamiento.trim() || null,
-            indicaciones: formulario.indicaciones.trim() || null,
+            diagnostico:
+              formulario.diagnostico.trim() || null,
+            tratamiento:
+              formulario.tratamiento.trim() || null,
+            indicaciones:
+              formulario.indicaciones.trim() || null,
             ruta_archivo: null
           })
         })
@@ -315,6 +402,10 @@ function HistoriaClinicaMedico() {
       setGuardando(false);
     }
   }
+
+  // =============================================
+  // INTERFAZ
+  // =============================================
 
   return (
     <section className="historia-page">
@@ -403,7 +494,10 @@ function HistoriaClinicaMedico() {
                     "Observaciones generales"
                   ]
                 ].map(([campo, titulo]) => (
-                  <div className="historia-bloque" key={campo}>
+                  <div
+                    className="historia-bloque"
+                    key={campo}
+                  >
                     <label htmlFor={`hc-${campo}`}>
                       {titulo}
                     </label>
@@ -449,7 +543,7 @@ function HistoriaClinicaMedico() {
               type="text"
               placeholder="Buscar paciente por nombre, apellido o DNI..."
               value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
+              onChange={cambiarBusqueda}
             />
           </div>
 
@@ -474,7 +568,7 @@ function HistoriaClinicaMedico() {
                     </td>
                   </tr>
                 ) : (
-                  historiasFiltradas.map((h) => (
+                  historiasVisibles.map((h) => (
                     <tr key={h.id_hc}>
                       <td>
                         {h.nombre} {h.apellido}
@@ -501,6 +595,66 @@ function HistoriaClinicaMedico() {
               </tbody>
             </table>
           </div>
+
+          {/* PAGINACIÓN DE HISTORIAS CLÍNICAS */}
+
+          {historiasOrdenadas.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginTop: "20px",
+                marginBottom: "20px",
+                gap: "12px",
+                flexWrap: "wrap"
+              }}
+            >
+              <span>
+                Mostrando {indiceInicio + 1} a{" "}
+                {Math.min(
+                  indiceInicio + historiasPorPagina,
+                  historiasOrdenadas.length
+                )}{" "}
+                de {historiasOrdenadas.length} historias clínicas
+              </span>
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  flexWrap: "wrap"
+                }}
+              >
+                <button
+                  type="button"
+                  className="historia-btn-volver"
+                  disabled={paginaVisible === 1}
+                  onClick={() =>
+                    setPaginaActual(paginaVisible - 1)
+                  }
+                >
+                  Anterior
+                </button>
+
+                <span>
+                  Página {paginaVisible} de {totalPaginas}
+                </span>
+
+                <button
+                  type="button"
+                  className="historia-btn-volver"
+                  disabled={paginaVisible === totalPaginas}
+                  onClick={() =>
+                    setPaginaActual(paginaVisible + 1)
+                  }
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
         </>
 
       ) : (
@@ -646,6 +800,9 @@ function HistoriaClinicaMedico() {
                           <strong>Evolución médica</strong>
                           <span>
                             {ev.fecha_hora || "Sin fecha"}
+                          </span>
+                          <span style={{ display: "block", marginTop: "5px" }}>
+                            <strong>Profesional:</strong> {ev.medico || "No identificado"}
                           </span>
                         </div>
                       </div>

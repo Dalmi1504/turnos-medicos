@@ -1,6 +1,7 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import "../styles/SolicitarTurnoPaciente.css";
 
 const API = "http://127.0.0.1:8000";
 
@@ -9,35 +10,46 @@ function SolicitarTurnoPaciente() {
 
   const [medicos, setMedicos] = useState([]);
   const [idMedico, setIdMedico] = useState("");
+  const [selectorAbierto, setSelectorAbierto] = useState(false);
+
   const [fecha, setFecha] = useState("");
   const [hora, setHora] = useState("");
   const [horarios, setHorarios] = useState([]);
   const [motivo, setMotivo] = useState("");
+
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [cargandoHorarios, setCargandoHorarios] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
   const [calendarioAbierto, setCalendarioAbierto] = useState(false);
+
   const [mesVisible, setMesVisible] = useState(() => {
     const hoy = new Date();
     return new Date(hoy.getFullYear(), hoy.getMonth(), 1);
   });
 
+  const selectorRef = useRef(null);
+
+  // ==========================================
+  // FECHAS
+  // ==========================================
+
   const formatearFecha = (fechaDate) => {
     const anio = fechaDate.getFullYear();
     const mes = String(fechaDate.getMonth() + 1).padStart(2, "0");
     const dia = String(fechaDate.getDate()).padStart(2, "0");
+
     return `${anio}-${mes}-${dia}`;
   };
 
   const fechaMinima = formatearFecha(new Date());
 
   const cambiarMes = (cantidad) => {
-    setMesVisible(
+    setMesVisible((anterior) =>
       new Date(
-        mesVisible.getFullYear(),
-        mesVisible.getMonth() + cantidad,
+        anterior.getFullYear(),
+        anterior.getMonth() + cantidad,
         1
       )
     );
@@ -56,9 +68,7 @@ function SolicitarTurnoPaciente() {
     const primerDia = new Date(anio, mes, 1);
     const cantidadDias = new Date(anio, mes + 1, 0).getDate();
 
-    // Semana comenzando el lunes
     const espaciosIniciales = (primerDia.getDay() + 6) % 7;
-
     const dias = Array(espaciosIniciales).fill(null);
 
     for (let dia = 1; dia <= cantidadDias; dia++) {
@@ -70,7 +80,7 @@ function SolicitarTurnoPaciente() {
 
   const nombreMes = mesVisible.toLocaleDateString("es-AR", {
     month: "long",
-    year: "numeric",
+    year: "numeric"
   });
 
   const fechaVisible = fecha
@@ -81,7 +91,39 @@ function SolicitarTurnoPaciente() {
     mesVisible.getFullYear() === new Date().getFullYear() &&
     mesVisible.getMonth() === new Date().getMonth();
 
-  // Cargar médicos activos
+  // ==========================================
+  // CERRAR SELECTOR DE MÉDICOS
+  // ==========================================
+
+  useEffect(() => {
+    const cerrarSelector = (evento) => {
+      if (
+        selectorRef.current &&
+        !selectorRef.current.contains(evento.target)
+      ) {
+        setSelectorAbierto(false);
+      }
+    };
+
+    const cerrarConEscape = (evento) => {
+      if (evento.key === "Escape") {
+        setSelectorAbierto(false);
+      }
+    };
+
+    document.addEventListener("mousedown", cerrarSelector);
+    document.addEventListener("keydown", cerrarConEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", cerrarSelector);
+      document.removeEventListener("keydown", cerrarConEscape);
+    };
+  }, []);
+
+  // ==========================================
+  // CARGAR MÉDICOS ACTIVOS
+  // ==========================================
+
   useEffect(() => {
     const cargarMedicos = async () => {
       try {
@@ -104,7 +146,10 @@ function SolicitarTurnoPaciente() {
     cargarMedicos();
   }, []);
 
-  // Consultar horarios disponibles
+  // ==========================================
+  // CONSULTAR HORARIOS DISPONIBLES
+  // ==========================================
+
   useEffect(() => {
     if (!idMedico || !fecha) {
       setHorarios([]);
@@ -123,7 +168,7 @@ function SolicitarTurnoPaciente() {
       try {
         const parametros = new URLSearchParams({
           id_medico: idMedico,
-          fecha,
+          fecha
         });
 
         const respuesta = await fetch(
@@ -158,11 +203,35 @@ function SolicitarTurnoPaciente() {
     return () => controlador.abort();
   }, [idMedico, fecha]);
 
-  // Confirmar reserva
-  const manejarSubmit = async (e) => {
-    e.preventDefault();
+  // ==========================================
+  // SELECCIONAR MÉDICO
+  // ==========================================
+
+  const seleccionarMedico = (medico) => {
+    setIdMedico(String(medico.id_medico));
+    setSelectorAbierto(false);
     setError("");
     setMensaje("");
+  };
+
+  const medicoSeleccionado = medicos.find(
+    (medico) => String(medico.id_medico) === idMedico
+  );
+
+  // ==========================================
+  // CONFIRMAR RESERVA
+  // ==========================================
+
+  const manejarSubmit = async (e) => {
+    e.preventDefault();
+
+    setError("");
+    setMensaje("");
+
+    if (!idMedico) {
+      setError("Seleccioná un médico.");
+      return;
+    }
 
     if (!horarios.includes(hora)) {
       setError("Seleccioná un horario disponible.");
@@ -185,14 +254,14 @@ function SolicitarTurnoPaciente() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${token}`
           },
           body: JSON.stringify({
             id_medico: Number(idMedico),
             fecha,
             hora,
-            motivo_consulta: motivo.trim(),
-          }),
+            motivo_consulta: motivo.trim()
+          })
         }
       );
 
@@ -215,38 +284,21 @@ function SolicitarTurnoPaciente() {
     }
   };
 
-  const estiloCampo = {
-    width: "100%",
-    padding: "10px",
-    boxSizing: "border-box",
-    marginTop: "5px",
-    border: "1px solid #d5dce5",
-    borderRadius: "6px",
-    fontSize: "15px",
-  };
+  // ==========================================
+  // INTERFAZ
+  // ==========================================
 
   return (
-    <main
-      style={{
-        maxWidth: "800px",
-        margin: "40px auto",
-        padding: "20px",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "15px",
-          marginBottom: "20px",
-        }}
-      >
+    <main className="solicitar-turno-page">
+
+      {/* ENCABEZADO */}
+
+      <div className="solicitar-turno-header">
         <h2>Solicitar Nuevo Turno Médico</h2>
 
         <button
           type="button"
+          className="solicitar-turno-volver"
           onClick={() => navigate("/portal-paciente")}
         >
           ← Volver al Portal
@@ -254,150 +306,151 @@ function SolicitarTurnoPaciente() {
       </div>
 
       <form
+        className="solicitar-turno-form"
         onSubmit={manejarSubmit}
-        style={{
-          padding: "20px",
-          border: "1px solid #ddd",
-          borderRadius: "8px",
-          backgroundColor: "#fff",
-        }}
       >
-        {/* MÉDICO */}
-        <div style={{ marginBottom: "20px" }}>
-          <label htmlFor="medico">Seleccionar médico</label>
 
-          <select
-            id="medico"
-            value={idMedico}
-            onChange={(e) => setIdMedico(e.target.value)}
-            required
-            style={estiloCampo}
+        {/* ==================================
+            SELECTOR PERSONALIZADO DE MÉDICOS
+        ================================== */}
+
+        <div className="solicitar-turno-campo">
+          <label id="etiqueta-medico">
+            Seleccionar médico
+          </label>
+
+          <div
+            className="solicitar-medico-selector"
+            ref={selectorRef}
           >
-            <option value="">-- Seleccioná un médico --</option>
+            <button
+              type="button"
+              className="solicitar-medico-boton"
+              aria-labelledby="etiqueta-medico"
+              aria-expanded={selectorAbierto}
+              aria-controls="lista-medicos-paciente"
+              onClick={() =>
+                setSelectorAbierto(!selectorAbierto)
+              }
+            >
+              <span className="solicitar-medico-texto">
+                {medicoSeleccionado ? (
+                  <>
+                    Dr./Dra. {medicoSeleccionado.apellido},{" "}
+                    {medicoSeleccionado.nombre}
+                    {" - "}
+                    {medicoSeleccionado.especialidad}
+                  </>
+                ) : (
+                  "-- Seleccioná un médico --"
+                )}
+              </span>
 
-            {medicos.map((medico) => (
-              <option
-                key={medico.id_medico}
-                value={medico.id_medico}
+              <span aria-hidden="true">
+                {selectorAbierto ? "▲" : "▼"}
+              </span>
+            </button>
+
+            {selectorAbierto && (
+              <div
+                id="lista-medicos-paciente"
+                className="solicitar-medico-lista"
+                role="group"
+                aria-label="Médicos disponibles"
               >
-                Dr./Dra. {medico.apellido}, {medico.nombre}
-                {" - "}
-                {medico.especialidad}
-              </option>
-            ))}
-          </select>
+                {medicos.length === 0 ? (
+                  <p className="solicitar-medico-vacio">
+                    No hay médicos disponibles.
+                  </p>
+                ) : (
+                  medicos.map((medico) => (
+                    <button
+                      key={medico.id_medico}
+                      type="button"
+                      className={
+                        "solicitar-medico-opcion" +
+                        (String(medico.id_medico) === idMedico
+                          ? " seleccionado"
+                          : "")
+                      }
+                      aria-pressed={
+                        String(medico.id_medico) === idMedico
+                      }
+                      onClick={() => seleccionarMedico(medico)}
+                    >
+                      <span className="solicitar-medico-nombre">
+                        Dr./Dra. {medico.apellido},{" "}
+                        {medico.nombre}
+                      </span>
+
+                      <span className="solicitar-medico-especialidad">
+                        {medico.especialidad}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* CALENDARIO GRANDE */}
-        <div style={{ marginBottom: "20px" }}>
+        {/* ==================================
+            CALENDARIO
+        ================================== */}
+
+        <div className="solicitar-turno-campo">
           <label>Fecha del turno</label>
 
           <button
             type="button"
-            onClick={() => setCalendarioAbierto(!calendarioAbierto)}
-            style={{
-              ...estiloCampo,
-              textAlign: "left",
-              background: "#fff",
-              cursor: "pointer",
-              color: fecha ? "#24364b" : "#777",
-            }}
+            className="solicitar-fecha-boton"
+            aria-expanded={calendarioAbierto}
+            onClick={() =>
+              setCalendarioAbierto(!calendarioAbierto)
+            }
           >
-            📅 {fechaVisible}
-            <span style={{ float: "right" }}>
+            <span>📅 {fechaVisible}</span>
+            <span>
               {calendarioAbierto ? "▲" : "▼"}
             </span>
           </button>
 
           {calendarioAbierto && (
-            <div
-              style={{
-                marginTop: "10px",
-                padding: "20px",
-                border: "1px solid #dce3ec",
-                borderRadius: "12px",
-                backgroundColor: "#fff",
-                boxShadow: "0 5px 18px rgba(0,0,0,0.08)",
-                maxWidth: "440px",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "20px",
-                }}
-              >
+            <div className="solicitar-calendario">
+
+              <div className="solicitar-calendario-header">
                 <button
                   type="button"
                   disabled={mesAnteriorDeshabilitado}
                   onClick={() => cambiarMes(-1)}
-                  style={{
-                    padding: "9px 14px",
-                    cursor: mesAnteriorDeshabilitado
-                      ? "not-allowed"
-                      : "pointer",
-                    border: "1px solid #ddd",
-                    borderRadius: "7px",
-                    background: "#f5f7fa",
-                    opacity: mesAnteriorDeshabilitado ? 0.4 : 1,
-                  }}
+                  aria-label="Mes anterior"
                 >
                   ❮
                 </button>
 
-                <strong
-                  style={{
-                    textTransform: "capitalize",
-                    fontSize: "19px",
-                    color: "#24364b",
-                  }}
-                >
-                  {nombreMes}
-                </strong>
+                <strong>{nombreMes}</strong>
 
                 <button
                   type="button"
                   onClick={() => cambiarMes(1)}
-                  style={{
-                    padding: "9px 14px",
-                    cursor: "pointer",
-                    border: "1px solid #ddd",
-                    borderRadius: "7px",
-                    background: "#f5f7fa",
-                  }}
+                  aria-label="Mes siguiente"
                 >
                   ❯
                 </button>
               </div>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-                  gap: "6px",
-                }}
-              >
-                {["L", "M", "M", "J", "V", "S", "D"].map(
-                  (dia, indice) => (
-                    <div
-                      key={indice}
-                      style={{
-                        textAlign: "center",
-                        fontWeight: "bold",
-                        color: "#68788c",
-                        padding: "10px 0",
-                      }}
-                    >
-                      {dia}
-                    </div>
+              <div className="solicitar-calendario-dias">
+                {["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"].map(
+                  (dia) => (
+                    <strong key={dia}>{dia}</strong>
                   )
                 )}
 
                 {obtenerDiasCalendario().map((dia, indice) => {
                   if (!dia) {
-                    return <div key={`vacio-${indice}`} />;
+                    return (
+                      <div key={`vacio-${indice}`} />
+                    );
                   }
 
                   const fechaDia = formatearFecha(dia);
@@ -410,27 +463,15 @@ function SolicitarTurnoPaciente() {
                       key={fechaDia}
                       type="button"
                       disabled={esPasado}
-                      onClick={() => seleccionarFecha(fechaDia)}
-                      style={{
-                        minHeight: "48px",
-                        borderRadius: "8px",
-                        border: esHoy
-                          ? "2px solid #2384e8"
-                          : "1px solid transparent",
-                        background: seleccionado
-                          ? "#2384e8"
-                          : "#f4f7fb",
-                        color: seleccionado
-                          ? "#fff"
-                          : esPasado
-                          ? "#bec6d0"
-                          : "#24364b",
-                        fontWeight: seleccionado ? "bold" : "normal",
-                        fontSize: "15px",
-                        cursor: esPasado
-                          ? "not-allowed"
-                          : "pointer",
-                      }}
+                      onClick={() =>
+                        seleccionarFecha(fechaDia)
+                      }
+                      className={[
+                        "solicitar-calendario-dia",
+                        esPasado ? "pasado" : "",
+                        seleccionado ? "seleccionado" : "",
+                        esHoy ? "hoy" : ""
+                      ].filter(Boolean).join(" ")}
                     >
                       {dia.getDate()}
                     </button>
@@ -438,23 +479,21 @@ function SolicitarTurnoPaciente() {
                 })}
               </div>
 
-              <p
-                style={{
-                  fontSize: "12px",
-                  color: "#777",
-                  marginTop: "15px",
-                  marginBottom: 0,
-                }}
-              >
+              <p className="solicitar-calendario-ayuda">
                 Seleccioná una fecha para consultar los horarios.
               </p>
             </div>
           )}
         </div>
 
-        {/* HORARIOS */}
-        <div style={{ marginBottom: "20px" }}>
-          <label htmlFor="hora">Horario disponible</label>
+        {/* ==================================
+            HORARIOS
+        ================================== */}
+
+        <div className="solicitar-turno-campo">
+          <label htmlFor="hora">
+            Horario disponible
+          </label>
 
           <select
             id="hora"
@@ -467,7 +506,6 @@ function SolicitarTurnoPaciente() {
               cargandoHorarios ||
               horarios.length === 0
             }
-            style={estiloCampo}
           >
             <option value="">
               {cargandoHorarios
@@ -487,16 +525,21 @@ function SolicitarTurnoPaciente() {
             !cargandoHorarios &&
             horarios.length === 0 &&
             !error && (
-              <p style={{ color: "#666" }}>
+              <p className="solicitar-turno-aviso">
                 No hay horarios disponibles para esa fecha.
                 Probá con otro día.
               </p>
             )}
         </div>
 
-        {/* MOTIVO */}
-        <div style={{ marginBottom: "20px" }}>
-          <label htmlFor="motivo">Motivo de consulta</label>
+        {/* ==================================
+            MOTIVO
+        ================================== */}
+
+        <div className="solicitar-turno-campo">
+          <label htmlFor="motivo">
+            Motivo de consulta
+          </label>
 
           <textarea
             id="motivo"
@@ -504,35 +547,41 @@ function SolicitarTurnoPaciente() {
             onChange={(e) => setMotivo(e.target.value)}
             placeholder="Describí brevemente el motivo..."
             required
-            style={{
-              ...estiloCampo,
-              minHeight: "90px",
-            }}
           />
         </div>
 
-        {error && <p style={{ color: "red" }}>{error}</p>}
-        {mensaje && <p style={{ color: "green" }}>{mensaje}</p>}
+        {/* MENSAJES */}
+
+        {error && (
+          <p className="solicitar-turno-error" role="alert">
+            {error}
+          </p>
+        )}
+
+        {mensaje && (
+          <p className="solicitar-turno-exito" role="status">
+            {mensaje}
+          </p>
+        )}
+
+        {/* CONFIRMAR */}
 
         <button
           type="submit"
+          className="solicitar-turno-confirmar"
           disabled={
             guardando ||
             cargandoHorarios ||
+            !idMedico ||
             !fecha ||
             !horarios.includes(hora)
           }
-          style={{
-            padding: "12px 18px",
-            backgroundColor: "#28a745",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
         >
-          {guardando ? "Reservando..." : "Confirmar Reserva"}
+          {guardando
+            ? "Reservando..."
+            : "Confirmar Reserva"}
         </button>
+
       </form>
     </main>
   );

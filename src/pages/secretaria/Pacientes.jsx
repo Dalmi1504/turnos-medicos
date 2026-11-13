@@ -1,5 +1,34 @@
+
 import { useEffect, useState } from "react";
 import "../../styles/pacientes.css";
+
+const API = "http://127.0.0.1:8000";
+
+const nombresCobertura = {
+  1: "OSDE",
+  2: "Swiss Medical",
+  3: "Galeno",
+  4: "PAMI",
+  5: "Particular",
+};
+
+const idsCobertura = {
+  OSDE: 1,
+  "Swiss Medical": 2,
+  Galeno: 3,
+  PAMI: 4,
+  Particular: 5,
+};
+
+const formularioVacio = {
+  dni: "",
+  nombre: "",
+  apellido: "",
+  telefono: "",
+  cobertura: "",
+  numeroAfiliado: "",
+  estado: "Activo",
+};
 
 function Pacientes() {
   const [busqueda, setBusqueda] = useState("");
@@ -9,85 +38,41 @@ function Pacientes() {
   const [idPacienteEditando, setIdPacienteEditando] = useState(null);
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
   const [pacientes, setPacientes] = useState([]);
-
-  // -----------------------------------------
-  // COBERTURAS
-  // -----------------------------------------
-
-  const nombresCobertura = {
-    1: "OSDE",
-    2: "Swiss Medical",
-    3: "Galeno",
-    4: "PAMI",
-    5: "Particular",
-  };
-
-  const idsCobertura = {
-    OSDE: 1,
-    "Swiss Medical": 2,
-    Galeno: 3,
-    PAMI: 4,
-    Particular: 5,
-  };
-
-  // -----------------------------------------
-  // DATOS DEL FORMULARIO
-  // -----------------------------------------
-
   const [nuevoPaciente, setNuevoPaciente] = useState({
-    dni: "",
-    nombre: "",
-    apellido: "",
-    telefono: "",
-    cobertura: "",
-    numeroAfiliado: "",
-    estado: "Activo",
+    ...formularioVacio,
   });
 
-  // -----------------------------------------
-  // GET /pacientes
-  // Traer pacientes desde FastAPI
-  // -----------------------------------------
+  // PAGINACIÓN
+  const [paginaActual, setPaginaActual] = useState(1);
+  const pacientesPorPagina = 10;
 
+  // -----------------------------------------
+  // CARGAR PACIENTES DESDE FASTAPI
+  // -----------------------------------------
   const cargarPacientes = async () => {
     try {
-      const respuesta = await fetch(
-        "http://127.0.0.1:8000/pacientes"
-      );
+      const respuesta = await fetch(`${API}/pacientes`);
 
       if (!respuesta.ok) {
-        throw new Error(
-          "No se pudieron obtener los pacientes."
-        );
+        throw new Error("No se pudieron obtener los pacientes.");
       }
 
       const datos = await respuesta.json();
 
       const pacientesAdaptados = datos.map((paciente) => ({
         ...paciente,
-
         cobertura:
-          nombresCobertura[paciente.id_cobertura] ||
-          "Particular",
-
-        numeroAfiliado:
-          paciente.numero_credencial || "",
-
-        estado:
-          paciente.activo ? "Activo" : "Inactivo",
+          nombresCobertura[paciente.id_cobertura] || "Particular",
+        numeroAfiliado: paciente.numero_credencial || "",
+        estado: paciente.activo ? "Activo" : "Inactivo",
       }));
 
       setPacientes(pacientesAdaptados);
-
     } catch (error) {
-      console.error(
-        "Error al obtener pacientes:",
-        error
-      );
+      console.error("Error al obtener pacientes:", error);
     }
   };
 
-  // Al cargar la pantalla hacemos el GET
   useEffect(() => {
     cargarPacientes();
   }, []);
@@ -95,7 +80,6 @@ function Pacientes() {
   // -----------------------------------------
   // NORMALIZAR TEXTO
   // -----------------------------------------
-
   const normalizarTexto = (texto) => {
     return String(texto || "")
       .normalize("NFD")
@@ -104,58 +88,69 @@ function Pacientes() {
   };
 
   // -----------------------------------------
-  // BUSCADOR
+  // BUSCADOR ORIGINAL
+  // -----------------------------------------
+  const pacientesFiltrados = pacientes.filter((paciente) => {
+    const textoBusqueda = normalizarTexto(busqueda);
+
+    const nombreCompleto =
+      `${paciente.nombre} ${paciente.apellido}`;
+
+    return (
+      normalizarTexto(nombreCompleto).includes(textoBusqueda) ||
+      String(paciente.dni || "").includes(textoBusqueda) ||
+      normalizarTexto(paciente.cobertura).includes(textoBusqueda) ||
+      normalizarTexto(paciente.numeroAfiliado).includes(textoBusqueda)
+    );
+  });
+
+  // -----------------------------------------
+  // PAGINACIÓN - NUEVA FUNCIONALIDAD
   // -----------------------------------------
 
-  const pacientesFiltrados = pacientes.filter(
-    (paciente) => {
-      const textoBusqueda = normalizarTexto(busqueda);
-
-      const nombreCompleto =
-        `${paciente.nombre} ${paciente.apellido}`;
-
-      return (
-        normalizarTexto(nombreCompleto).includes(
-          textoBusqueda
-        ) ||
-        String(paciente.dni || "").includes(
-          textoBusqueda
-        ) ||
-        normalizarTexto(paciente.cobertura).includes(
-          textoBusqueda
-        ) ||
-        normalizarTexto(
-          paciente.numeroAfiliado
-        ).includes(textoBusqueda)
-      );
-    }
+  // Ordenar desde el último paciente registrado
+  const pacientesOrdenados = [...pacientesFiltrados].sort(
+    (a, b) => Number(b.id_paciente) - Number(a.id_paciente)
   );
 
-  // -----------------------------------------
-  // MANEJAR CAMBIOS DEL FORMULARIO
-  // -----------------------------------------
+  const totalPaginas = Math.ceil(
+    pacientesOrdenados.length / pacientesPorPagina
+  );
 
+  const paginaVisible = Math.min(
+    paginaActual,
+    Math.max(1, totalPaginas)
+  );
+
+  const indiceInicio = (paginaVisible - 1) * pacientesPorPagina;
+
+  const pacientesVisibles = pacientesOrdenados.slice(
+    indiceInicio,
+    indiceInicio + pacientesPorPagina
+  );
+
+  const cambiarBusqueda = (evento) => {
+    setBusqueda(evento.target.value);
+    setPaginaActual(1);
+  };
+
+  // -----------------------------------------
+  // CAMBIOS DEL FORMULARIO
+  // -----------------------------------------
   const manejarCambio = (evento) => {
     const { name, value } = evento.target;
 
-    // DNI solamente números
-    if (
-      name === "dni" &&
-      !/^\d*$/.test(value)
-    ) {
+    if (name === "dni" && !/^\d*$/.test(value)) {
       return;
     }
 
-    // Nombre y apellido solamente letras
     if (
-      (name === "nombre" ||
-        name === "apellido") &&
+      (name === "nombre" || name === "apellido") &&
       !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]*$/.test(value)
     ) {
       return;
     }
 
-    // Teléfono
     if (
       name === "telefono" &&
       !/^[0-9+\-\s()]*$/.test(value)
@@ -163,7 +158,6 @@ function Pacientes() {
       return;
     }
 
-    // Número de afiliado
     if (
       name === "numeroAfiliado" &&
       !/^[a-zA-Z0-9\-\s]*$/.test(value)
@@ -171,42 +165,32 @@ function Pacientes() {
       return;
     }
 
-    setNuevoPaciente({
-      ...nuevoPaciente,
+    setNuevoPaciente((anterior) => ({
+      ...anterior,
       [name]: value,
-    });
+    }));
 
-    setErrores({
-      ...errores,
+    setErrores((anterior) => ({
+      ...anterior,
       [name]: "",
-    });
+    }));
   };
 
   // -----------------------------------------
-  // VALIDACIONES
+  // VALIDACIONES ORIGINALES
   // -----------------------------------------
-
   const validarFormulario = () => {
     const nuevosErrores = {};
 
-    // DNI
     if (!nuevoPaciente.dni.trim()) {
-      nuevosErrores.dni =
-        "El DNI es obligatorio.";
-
-    } else if (
-      !/^\d{7,8}$/.test(nuevoPaciente.dni)
-    ) {
-      nuevosErrores.dni =
-        "El DNI debe tener 7 u 8 dígitos.";
-
+      nuevosErrores.dni = "El DNI es obligatorio.";
+    } else if (!/^\d{7,8}$/.test(nuevoPaciente.dni)) {
+      nuevosErrores.dni = "El DNI debe tener 7 u 8 dígitos.";
     } else {
       const dniDuplicado = pacientes.some(
         (paciente) =>
-          String(paciente.dni) ===
-            nuevoPaciente.dni &&
-          String(paciente.dni) !==
-            String(dniEditando)
+          String(paciente.dni) === nuevoPaciente.dni &&
+          String(paciente.dni) !== String(dniEditando)
       );
 
       if (dniDuplicado) {
@@ -215,42 +199,28 @@ function Pacientes() {
       }
     }
 
-    // Nombre
     if (!nuevoPaciente.nombre.trim()) {
-      nuevosErrores.nombre =
-        "El nombre es obligatorio.";
+      nuevosErrores.nombre = "El nombre es obligatorio.";
     }
 
-    // Apellido
     if (!nuevoPaciente.apellido.trim()) {
-      nuevosErrores.apellido =
-        "El apellido es obligatorio.";
+      nuevosErrores.apellido = "El apellido es obligatorio.";
     }
 
-    // Teléfono
     if (!nuevoPaciente.telefono.trim()) {
-      nuevosErrores.telefono =
-        "El teléfono es obligatorio.";
-
+      nuevosErrores.telefono = "El teléfono es obligatorio.";
     } else if (
-      !/^[0-9+\-\s()]{8,20}$/.test(
-        nuevoPaciente.telefono
-      )
+      !/^[0-9+\-\s()]{8,20}$/.test(nuevoPaciente.telefono)
     ) {
-      nuevosErrores.telefono =
-        "Ingresá un teléfono válido.";
+      nuevosErrores.telefono = "Ingresá un teléfono válido.";
     }
 
-    // Cobertura
     if (!nuevoPaciente.cobertura.trim()) {
-      nuevosErrores.cobertura =
-        "La cobertura es obligatoria.";
+      nuevosErrores.cobertura = "La cobertura es obligatoria.";
     }
 
-    // Número de afiliado
     if (
-      nuevoPaciente.cobertura !==
-        "Particular" &&
+      nuevoPaciente.cobertura !== "Particular" &&
       !nuevoPaciente.numeroAfiliado.trim()
     ) {
       nuevosErrores.numeroAfiliado =
@@ -259,43 +229,26 @@ function Pacientes() {
 
     setErrores(nuevosErrores);
 
-    return (
-      Object.keys(nuevosErrores).length === 0
-    );
+    return Object.keys(nuevosErrores).length === 0;
   };
 
   // -----------------------------------------
   // ABRIR NUEVO PACIENTE
   // -----------------------------------------
-
   const abrirNuevoPaciente = () => {
     setDniEditando(null);
     setIdPacienteEditando(null);
-
-    setNuevoPaciente({
-      dni: "",
-      nombre: "",
-      apellido: "",
-      telefono: "",
-      cobertura: "",
-      numeroAfiliado: "",
-      estado: "Activo",
-    });
-
+    setNuevoPaciente({ ...formularioVacio });
     setErrores({});
     setMostrarFormulario(true);
   };
 
   // -----------------------------------------
-  // ABRIR EDICIÓN
+  // EDITAR PACIENTE
   // -----------------------------------------
-
   const editarPaciente = (paciente) => {
     setDniEditando(String(paciente.dni));
-
-    setIdPacienteEditando(
-      paciente.id_paciente
-    );
+    setIdPacienteEditando(paciente.id_paciente);
 
     setNuevoPaciente({
       dni: String(paciente.dni || ""),
@@ -303,10 +256,8 @@ function Pacientes() {
       apellido: paciente.apellido || "",
       telefono: paciente.telefono || "",
       cobertura: paciente.cobertura || "",
-      numeroAfiliado:
-        paciente.numeroAfiliado || "",
-      estado:
-        paciente.estado || "Activo",
+      numeroAfiliado: paciente.numeroAfiliado || "",
+      estado: paciente.estado || "Activo",
     });
 
     setErrores({});
@@ -314,11 +265,19 @@ function Pacientes() {
   };
 
   // -----------------------------------------
-  // GUARDAR
-  // POST = NUEVO
-  // PUT = EDITAR
+  // CERRAR FORMULARIO
   // -----------------------------------------
+  const cerrarFormulario = () => {
+    setMostrarFormulario(false);
+    setDniEditando(null);
+    setIdPacienteEditando(null);
+    setNuevoPaciente({ ...formularioVacio });
+    setErrores({});
+  };
 
+  // -----------------------------------------
+  // GUARDAR PACIENTE - POST / PUT
+  // -----------------------------------------
   const guardarPaciente = async (evento) => {
     evento.preventDefault();
 
@@ -331,147 +290,63 @@ function Pacientes() {
       nombre: nuevoPaciente.nombre,
       apellido: nuevoPaciente.apellido,
       telefono: nuevoPaciente.telefono,
-
       id_cobertura:
-        idsCobertura[
-          nuevoPaciente.cobertura
-        ] || null,
-
+        idsCobertura[nuevoPaciente.cobertura] || null,
       numero_credencial:
-        nuevoPaciente.cobertura ===
-        "Particular"
+        nuevoPaciente.cobertura === "Particular"
           ? null
-          : nuevoPaciente.numeroAfiliado ||
-            null,
-
-      activo:
-        nuevoPaciente.estado === "Activo",
+          : nuevoPaciente.numeroAfiliado || null,
+      activo: nuevoPaciente.estado === "Activo",
     };
 
     try {
-      // =====================================
-      // EDITAR PACIENTE → PUT
-      // =====================================
+      const editando = idPacienteEditando !== null;
 
-      if (idPacienteEditando !== null) {
-        const respuesta = await fetch(
-          `http://127.0.0.1:8000/pacientes/${idPacienteEditando}`,
-          {
-            method: "PUT",
+      const url = editando
+        ? `${API}/pacientes/${idPacienteEditando}`
+        : `${API}/pacientes`;
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body: JSON.stringify(
-              pacienteParaEnviar
-            ),
-          }
-        );
-
-        if (!respuesta.ok) {
-          const error =
-            await respuesta.json();
-
-          throw new Error(
-            error.detail ||
-            "Error al modificar el paciente."
-          );
-        }
-
-        const resultado =
-          await respuesta.json();
-
-        console.log(
-          "Paciente modificado:",
-          resultado
-        );
-
-        await cargarPacientes();
-        cerrarFormulario();
-
-        return;
-      }
-
-      // =====================================
-      // NUEVO PACIENTE → POST
-      // =====================================
-
-      const respuesta = await fetch(
-        "http://127.0.0.1:8000/pacientes",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify(
-            pacienteParaEnviar
-          ),
-        }
-      );
+      const respuesta = await fetch(url, {
+        method: editando ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(pacienteParaEnviar),
+      });
 
       if (!respuesta.ok) {
-        const error =
-          await respuesta.json();
+        const error = await respuesta.json();
 
         throw new Error(
           error.detail ||
-          "Error al guardar el paciente."
+            (editando
+              ? "Error al modificar el paciente."
+              : "Error al guardar el paciente.")
         );
       }
 
-      const resultado =
-        await respuesta.json();
-
+      const resultado = await respuesta.json();
       console.log(
-        "Paciente creado:",
+        editando ? "Paciente modificado:" : "Paciente creado:",
         resultado
       );
 
       await cargarPacientes();
       cerrarFormulario();
 
+      if (!editando) {
+        setBusqueda("");
+        setPaginaActual(1);
+      }
     } catch (error) {
-      console.error(
-        "Error al guardar paciente:",
-        error
-      );
-
+      console.error("Error al guardar paciente:", error);
       alert(error.message);
     }
   };
 
   // -----------------------------------------
-  // CERRAR FORMULARIO
-  // -----------------------------------------
-
-  const cerrarFormulario = () => {
-    setMostrarFormulario(false);
-
-    setDniEditando(null);
-    setIdPacienteEditando(null);
-
-    setNuevoPaciente({
-      dni: "",
-      nombre: "",
-      apellido: "",
-      telefono: "",
-      cobertura: "",
-      numeroAfiliado: "",
-      estado: "Activo",
-    });
-
-    setErrores({});
-  };
-
-  // -----------------------------------------
   // VER PACIENTE
   // -----------------------------------------
-
   const verPaciente = (paciente) => {
     setPacienteSeleccionado(paciente);
   };
@@ -482,9 +357,7 @@ function Pacientes() {
 
   // -----------------------------------------
   // INACTIVAR PACIENTE
-  // PUT /pacientes/{id}/inactivar
   // -----------------------------------------
-
   const inactivarPaciente = async (paciente) => {
     const confirmar = window.confirm(
       `¿Querés inactivar a ${paciente.nombre} ${paciente.apellido}?`
@@ -496,39 +369,26 @@ function Pacientes() {
 
     try {
       const respuesta = await fetch(
-        `http://127.0.0.1:8000/pacientes/${paciente.id_paciente}/inactivar`,
+        `${API}/pacientes/${paciente.id_paciente}/inactivar`,
         {
           method: "PUT",
         }
       );
 
       if (!respuesta.ok) {
-        const error =
-          await respuesta.json();
+        const error = await respuesta.json();
 
         throw new Error(
-          error.detail ||
-          "No se pudo inactivar el paciente."
+          error.detail || "No se pudo inactivar el paciente."
         );
       }
 
-      const resultado =
-        await respuesta.json();
+      const resultado = await respuesta.json();
+      console.log("Paciente inactivado:", resultado);
 
-      console.log(
-        "Paciente inactivado:",
-        resultado
-      );
-
-      // Volvemos a hacer GET
       await cargarPacientes();
-
     } catch (error) {
-      console.error(
-        "Error al inactivar paciente:",
-        error
-      );
-
+      console.error("Error al inactivar paciente:", error);
       alert(error.message);
     }
   };
@@ -536,19 +396,14 @@ function Pacientes() {
   // =========================================
   // INTERFAZ
   // =========================================
-
   return (
     <section className="pacientes-page">
 
       {/* CABECERA */}
-
       <div className="page-header">
         <div>
           <h1>Pacientes</h1>
-
-          <p>
-            Gestión de pacientes de UCBA.
-          </p>
+          <p>Gestión de pacientes de UCBA.</p>
         </div>
 
         <button
@@ -561,7 +416,6 @@ function Pacientes() {
       </div>
 
       {/* FORMULARIO */}
-
       {mostrarFormulario && (
         <form
           className="paciente-form"
@@ -586,12 +440,8 @@ function Pacientes() {
           <div className="form-grid">
 
             {/* DNI */}
-
             <div className="form-group">
-              <label htmlFor="dni">
-                DNI
-              </label>
-
+              <label htmlFor="dni">DNI</label>
               <input
                 id="dni"
                 name="dni"
@@ -601,7 +451,6 @@ function Pacientes() {
                 value={nuevoPaciente.dni}
                 onChange={manejarCambio}
               />
-
               {errores.dni && (
                 <span className="error-message">
                   {errores.dni}
@@ -610,12 +459,8 @@ function Pacientes() {
             </div>
 
             {/* NOMBRE */}
-
             <div className="form-group">
-              <label htmlFor="nombre">
-                Nombre
-              </label>
-
+              <label htmlFor="nombre">Nombre</label>
               <input
                 id="nombre"
                 name="nombre"
@@ -623,7 +468,6 @@ function Pacientes() {
                 value={nuevoPaciente.nombre}
                 onChange={manejarCambio}
               />
-
               {errores.nombre && (
                 <span className="error-message">
                   {errores.nombre}
@@ -632,22 +476,15 @@ function Pacientes() {
             </div>
 
             {/* APELLIDO */}
-
             <div className="form-group">
-              <label htmlFor="apellido">
-                Apellido
-              </label>
-
+              <label htmlFor="apellido">Apellido</label>
               <input
                 id="apellido"
                 name="apellido"
                 type="text"
-                value={
-                  nuevoPaciente.apellido
-                }
+                value={nuevoPaciente.apellido}
                 onChange={manejarCambio}
               />
-
               {errores.apellido && (
                 <span className="error-message">
                   {errores.apellido}
@@ -656,22 +493,15 @@ function Pacientes() {
             </div>
 
             {/* TELÉFONO */}
-
             <div className="form-group">
-              <label htmlFor="telefono">
-                Teléfono
-              </label>
-
+              <label htmlFor="telefono">Teléfono</label>
               <input
                 id="telefono"
                 name="telefono"
                 type="text"
-                value={
-                  nuevoPaciente.telefono
-                }
+                value={nuevoPaciente.telefono}
                 onChange={manejarCambio}
               />
-
               {errores.telefono && (
                 <span className="error-message">
                   {errores.telefono}
@@ -680,45 +510,27 @@ function Pacientes() {
             </div>
 
             {/* COBERTURA */}
-
             <div className="form-group">
-              <label htmlFor="cobertura">
-                Cobertura
-              </label>
-
+              <label htmlFor="cobertura">Cobertura</label>
               <select
                 id="cobertura"
                 name="cobertura"
-                value={
-                  nuevoPaciente.cobertura
-                }
+                value={nuevoPaciente.cobertura}
                 onChange={manejarCambio}
               >
                 <option value="">
                   Seleccionar cobertura
                 </option>
-
-                <option value="OSDE">
-                  OSDE
-                </option>
-
+                <option value="OSDE">OSDE</option>
                 <option value="Swiss Medical">
                   Swiss Medical
                 </option>
-
-                <option value="Galeno">
-                  Galeno
-                </option>
-
-                <option value="PAMI">
-                  PAMI
-                </option>
-
+                <option value="Galeno">Galeno</option>
+                <option value="PAMI">PAMI</option>
                 <option value="Particular">
                   Particular
                 </option>
               </select>
-
               {errores.cobertura && (
                 <span className="error-message">
                   {errores.cobertura}
@@ -727,65 +539,44 @@ function Pacientes() {
             </div>
 
             {/* NÚMERO DE AFILIADO */}
-
             <div className="form-group">
               <label htmlFor="numeroAfiliado">
                 Número de afiliado
               </label>
-
               <input
                 id="numeroAfiliado"
                 name="numeroAfiliado"
                 type="text"
-                value={
-                  nuevoPaciente.numeroAfiliado
-                }
+                value={nuevoPaciente.numeroAfiliado}
                 onChange={manejarCambio}
                 placeholder="Ej: 123456789"
                 disabled={
-                  nuevoPaciente.cobertura ===
-                  "Particular"
+                  nuevoPaciente.cobertura === "Particular"
                 }
               />
-
               {errores.numeroAfiliado && (
                 <span className="error-message">
-                  {
-                    errores.numeroAfiliado
-                  }
+                  {errores.numeroAfiliado}
                 </span>
               )}
             </div>
 
             {/* ESTADO */}
-
             <div className="form-group">
-              <label htmlFor="estado">
-                Estado
-              </label>
-
+              <label htmlFor="estado">Estado</label>
               <select
                 id="estado"
                 name="estado"
-                value={
-                  nuevoPaciente.estado
-                }
+                value={nuevoPaciente.estado}
                 onChange={manejarCambio}
               >
-                <option value="Activo">
-                  Activo
-                </option>
-
-                <option value="Inactivo">
-                  Inactivo
-                </option>
+                <option value="Activo">Activo</option>
+                <option value="Inactivo">Inactivo</option>
               </select>
             </div>
-
           </div>
 
           {/* BOTONES FORMULARIO */}
-
           <div className="form-actions">
             <button
               type="button"
@@ -807,24 +598,18 @@ function Pacientes() {
         </form>
       )}
 
-      {/* BUSCADOR */}
-
+      {/* BUSCADOR ORIGINAL */}
       <div className="search-container">
         <input
           className="search-input"
           type="text"
           placeholder="Buscar por nombre, apellido, DNI, cobertura o afiliado..."
           value={busqueda}
-          onChange={(evento) =>
-            setBusqueda(
-              evento.target.value
-            )
-          }
+          onChange={cambiarBusqueda}
         />
       </div>
 
-      {/* TABLA */}
-
+      {/* TABLA CON PAGINACIÓN */}
       <div className="table-container">
         <table className="pacientes-table">
           <thead>
@@ -840,84 +625,54 @@ function Pacientes() {
           </thead>
 
           <tbody>
-            {pacientesFiltrados.map(
-              (paciente) => (
-                <tr
-                  key={
-                    paciente.id_paciente ||
-                    paciente.dni
-                  }
-                >
-                  <td>
-                    {paciente.dni}
-                  </td>
+            {pacientesVisibles.map((paciente) => (
+              <tr
+                key={paciente.id_paciente || paciente.dni}
+              >
+                <td>{paciente.dni}</td>
 
-                  <td>
-                    {paciente.nombre}{" "}
-                    {paciente.apellido}
-                  </td>
+                <td>
+                  {paciente.nombre} {paciente.apellido}
+                </td>
 
-                  <td>
-                    {paciente.telefono}
-                  </td>
+                <td>{paciente.telefono}</td>
 
-                  <td>
-                    {paciente.cobertura}
-                  </td>
+                <td>{paciente.cobertura}</td>
 
-                  <td>
-                    {paciente.numeroAfiliado ||
-                      "-"}
-                  </td>
+                <td>
+                  {paciente.numeroAfiliado || "-"}
+                </td>
 
-                  <td>
-                    {paciente.estado}
-                  </td>
+                <td>{paciente.estado}</td>
 
-                  <td>
-                    <button
-                      type="button"
-                      className="btn-action"
-                      onClick={() =>
-                        verPaciente(
-                          paciente
-                        )
-                      }
-                    >
-                      Ver
-                    </button>
+                <td>
+                  <button
+                    type="button"
+                    className="btn-action"
+                    onClick={() => verPaciente(paciente)}
+                  >
+                    Ver
+                  </button>
 
-                    <button
-                      type="button"
-                      className="btn-action"
-                      onClick={() =>
-                        editarPaciente(
-                          paciente
-                        )
-                      }
-                    >
-                      Editar
-                    </button>
+                  <button
+                    type="button"
+                    className="btn-action"
+                    onClick={() => editarPaciente(paciente)}
+                  >
+                    Editar
+                  </button>
 
-                    <button
-                      type="button"
-                      className="btn-action"
-                      onClick={() =>
-                        inactivarPaciente(
-                          paciente
-                        )
-                      }
-                      disabled={
-                        paciente.estado ===
-                        "Inactivo"
-                      }
-                    >
-                      Inactivar
-                    </button>
-                  </td>
-                </tr>
-              )
-            )}
+                  <button
+                    type="button"
+                    className="btn-action"
+                    onClick={() => inactivarPaciente(paciente)}
+                    disabled={paciente.estado === "Inactivo"}
+                  >
+                    Inactivar
+                  </button>
+                </td>
+              </tr>
+            ))}
 
             {pacientesFiltrados.length === 0 && (
               <tr>
@@ -930,25 +685,75 @@ function Pacientes() {
         </table>
       </div>
 
-      {/* MODAL VER PACIENTE */}
+      {/* CONTROLES DE PAGINACIÓN */}
+      {pacientesOrdenados.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: "20px",
+            marginBottom: "20px",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}
+        >
+          <span>
+            Mostrando {indiceInicio + 1} a{" "}
+            {Math.min(
+              indiceInicio + pacientesPorPagina,
+              pacientesOrdenados.length
+            )}{" "}
+            de {pacientesOrdenados.length} pacientes
+          </span>
 
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+              alignItems: "center",
+            }}
+          >
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={paginaVisible === 1}
+              onClick={() =>
+                setPaginaActual(paginaVisible - 1)
+              }
+            >
+              Anterior
+            </button>
+
+            <span>
+              Página {paginaVisible} de {totalPaginas}
+            </span>
+
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={paginaVisible === totalPaginas}
+              onClick={() =>
+                setPaginaActual(paginaVisible + 1)
+              }
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL VER PACIENTE */}
       {pacienteSeleccionado && (
         <div className="modal-overlay">
           <div className="paciente-modal">
 
             <div className="modal-header">
               <div>
-                <h2>
-                  Datos del paciente
-                </h2>
-
+                <h2>Datos del paciente</h2>
                 <p>
-                  {
-                    pacienteSeleccionado.nombre
-                  }{" "}
-                  {
-                    pacienteSeleccionado.apellido
-                  }
+                  {pacienteSeleccionado.nombre}{" "}
+                  {pacienteSeleccionado.apellido}
                 </p>
               </div>
 
@@ -962,82 +767,54 @@ function Pacientes() {
             </div>
 
             <div className="detalle-grid">
-
               <div className="detalle-item">
                 <span>DNI</span>
-
                 <strong>
-                  {
-                    pacienteSeleccionado.dni
-                  }
+                  {pacienteSeleccionado.dni}
                 </strong>
               </div>
 
               <div className="detalle-item">
                 <span>Nombre</span>
-
                 <strong>
-                  {
-                    pacienteSeleccionado.nombre
-                  }
+                  {pacienteSeleccionado.nombre}
                 </strong>
               </div>
 
               <div className="detalle-item">
                 <span>Apellido</span>
-
                 <strong>
-                  {
-                    pacienteSeleccionado.apellido
-                  }
+                  {pacienteSeleccionado.apellido}
                 </strong>
               </div>
 
               <div className="detalle-item">
                 <span>Teléfono</span>
-
                 <strong>
-                  {
-                    pacienteSeleccionado.telefono
-                  }
+                  {pacienteSeleccionado.telefono}
                 </strong>
               </div>
 
               <div className="detalle-item">
                 <span>Cobertura</span>
-
                 <strong>
-                  {
-                    pacienteSeleccionado.cobertura
-                  }
+                  {pacienteSeleccionado.cobertura}
                 </strong>
               </div>
 
               <div className="detalle-item">
-                <span>
-                  Número de afiliado
-                </span>
-
+                <span>Número de afiliado</span>
                 <strong>
-                  {
-                    pacienteSeleccionado.numeroAfiliado ||
-                    "-"
-                  }
+                  {pacienteSeleccionado.numeroAfiliado || "-"}
                 </strong>
               </div>
 
               <div className="detalle-item">
-                <span>
-                  Estado
-                </span>
-
+                <span>Estado</span>
                 <strong>
-                  {
-                    pacienteSeleccionado.estado
-                  }
+                  {pacienteSeleccionado.estado}
                 </strong>
               </div>
-
             </div>
 
             <div className="modal-actions">
@@ -1054,10 +831,7 @@ function Pacientes() {
                 className="btn-primary"
                 onClick={() => {
                   cerrarDetalle();
-
-                  editarPaciente(
-                    pacienteSeleccionado
-                  );
+                  editarPaciente(pacienteSeleccionado);
                 }}
               >
                 Editar paciente

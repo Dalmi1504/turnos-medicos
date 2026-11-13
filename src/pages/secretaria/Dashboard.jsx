@@ -1,8 +1,18 @@
+
 import { useEffect, useMemo, useState } from "react";
 import "../../styles/dashboard.css";
 
 function Dashboard() {
   const [turnos, setTurnos] = useState([]);
+
+  // =========================
+  // USUARIO AUTENTICADO
+  // =========================
+  const usuario = JSON.parse(
+    localStorage.getItem("usuario") || "null"
+  );
+
+  const nombreUsuario = usuario?.username || "Usuario";
 
   const [tareas, setTareas] = useState(() => {
     const guardadas = localStorage.getItem("tareas-dashboard");
@@ -35,7 +45,10 @@ function Dashboard() {
   // GUARDAR TAREAS
   // =========================
   useEffect(() => {
-    localStorage.setItem("tareas-dashboard", JSON.stringify(tareas));
+    localStorage.setItem(
+      "tareas-dashboard",
+      JSON.stringify(tareas)
+    );
   }, [tareas]);
 
   // =========================
@@ -118,7 +131,11 @@ function Dashboard() {
       completada: false,
     };
 
-    setTareas((tareasAnteriores) => [...tareasAnteriores, tarea]);
+    setTareas((tareasAnteriores) => [
+      ...tareasAnteriores,
+      tarea,
+    ]);
+
     setNuevaTarea("");
   };
 
@@ -152,7 +169,9 @@ function Dashboard() {
       {/* BIENVENIDA */}
       <div className="dashboard-header">
         <div>
-          <h1>¡{saludo}, Dalma!</h1>
+          <h1>
+            ¡{saludo}, {nombreUsuario}!
+          </h1>
 
           <p className="dashboard-subtitulo">
             Este es el resumen de tu jornada.

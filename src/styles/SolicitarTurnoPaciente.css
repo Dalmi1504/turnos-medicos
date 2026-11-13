@@ -1,0 +1,492 @@
+
+/* ==========================================
+   SOLICITAR TURNO PACIENTE - UCBA
+========================================== */
+
+.solicitar-turno-page {
+  width: 100%;
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+  color: #24364b;
+}
+
+/* ENCABEZADO */
+
+.solicitar-turno-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.solicitar-turno-header h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.3;
+}
+
+.solicitar-turno-volver {
+  padding: 10px 14px;
+  border: 1px solid #dce3ec;
+  border-radius: 7px;
+  background: #f5f7fa;
+  color: #24364b;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* FORMULARIO */
+
+.solicitar-turno-form {
+  width: 100%;
+  padding: 24px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.solicitar-turno-campo {
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 20px;
+}
+
+.solicitar-turno-campo > label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.solicitar-turno-campo select,
+.solicitar-turno-campo textarea,
+.solicitar-fecha-boton {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  box-sizing: border-box;
+  border: 1px solid #d5dce5;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #24364b;
+  font-family: inherit;
+  font-size: 15px;
+}
+
+.solicitar-turno-campo select {
+  min-height: 44px;
+}
+
+.solicitar-turno-campo textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+/* ==========================================
+   SELECTOR PERSONALIZADO DE MÉDICOS
+========================================== */
+
+.solicitar-medico-selector {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.solicitar-medico-boton {
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 12px;
+  box-sizing: border-box;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  border: 1px solid #d5dce5;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #24364b;
+
+  font-family: inherit;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.solicitar-medico-texto {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.solicitar-medico-lista {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+
+  width: 100%;
+  max-height: 260px;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  box-sizing: border-box;
+  padding: 6px;
+
+  background: #ffffff;
+  border: 1px solid #d5dce5;
+  border-radius: 9px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+
+  z-index: 100;
+}
+
+.solicitar-medico-opcion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+
+  width: 100%;
+  min-height: 48px;
+  padding: 11px 12px;
+
+  border: none;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #24364b;
+
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.solicitar-medico-opcion:hover {
+  background: #eef8fc;
+}
+
+.solicitar-medico-opcion.seleccionado {
+  background: #e0f4fa;
+}
+
+.solicitar-medico-nombre {
+  width: 100%;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.solicitar-medico-especialidad {
+  width: 100%;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.solicitar-medico-vacio {
+  padding: 12px;
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* ==========================================
+   FECHA
+========================================== */
+
+.solicitar-fecha-boton {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  min-height: 46px;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* ==========================================
+   CALENDARIO
+========================================== */
+
+.solicitar-calendario {
+  width: 100%;
+  max-width: 440px;
+  margin-top: 10px;
+  padding: 20px;
+  box-sizing: border-box;
+
+  border: 1px solid #dce3ec;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.08);
+}
+
+.solicitar-calendario-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.solicitar-calendario-header strong {
+  font-size: 19px;
+  color: #24364b;
+  text-transform: capitalize;
+  text-align: center;
+}
+
+.solicitar-calendario-header button {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+
+  border: 1px solid #ddd;
+  border-radius: 7px;
+  background: #f5f7fa;
+  color: #24364b;
+  cursor: pointer;
+}
+
+.solicitar-calendario-header button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.solicitar-calendario-dias {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.solicitar-calendario-dias > strong {
+  padding: 10px 0;
+  font-size: 13px;
+  text-align: center;
+  color: #68788c;
+}
+
+.solicitar-calendario-dia {
+  min-width: 0;
+  min-height: 44px;
+  padding: 4px;
+
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #f4f7fb;
+  color: #24364b;
+
+  font-family: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.solicitar-calendario-dia.hoy {
+  border: 2px solid #2384e8;
+}
+
+.solicitar-calendario-dia.seleccionado {
+  background: #2384e8;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.solicitar-calendario-dia.pasado {
+  color: #bec6d0;
+  cursor: not-allowed;
+}
+
+.solicitar-calendario-ayuda {
+  margin: 15px 0 0;
+  font-size: 12px;
+  color: #777;
+  line-height: 1.5;
+}
+
+/* ==========================================
+   MENSAJES Y CONFIRMACIÓN
+========================================== */
+
+.solicitar-turno-aviso {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.solicitar-turno-error,
+.solicitar-turno-exito {
+  padding: 12px;
+  border-radius: 7px;
+  font-size: 14px;
+}
+
+.solicitar-turno-error {
+  background: #fdecec;
+  color: #b91c1c;
+}
+
+.solicitar-turno-exito {
+  background: #e7f8ed;
+  color: #27824b;
+}
+
+.solicitar-turno-confirmar {
+  min-height: 46px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 7px;
+
+  background: #28a745;
+  color: #ffffff;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.solicitar-turno-confirmar:hover:not(:disabled) {
+  background: #218838;
+}
+
+.solicitar-turno-confirmar:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ==========================================
+   ACCESIBILIDAD
+========================================== */
+
+.solicitar-turno-page button:focus-visible,
+.solicitar-turno-page select:focus-visible,
+.solicitar-turno-page textarea:focus-visible {
+  outline: 2px solid #16a9c7;
+  outline-offset: 2px;
+}
+
+/* ==========================================
+   TABLETS
+========================================== */
+
+@media (max-width: 768px) {
+  .solicitar-turno-page {
+    max-width: 100%;
+    margin: 24px auto;
+    padding: 20px;
+  }
+
+  .solicitar-turno-form {
+    padding: 20px;
+  }
+}
+
+/* ==========================================
+   CELULARES
+========================================== */
+
+@media (max-width: 600px) {
+  .solicitar-turno-page {
+    margin: 0 auto;
+    padding: 20px 16px;
+  }
+
+  .solicitar-turno-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .solicitar-turno-header h2 {
+    font-size: 21px;
+  }
+
+  .solicitar-turno-volver {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .solicitar-turno-form {
+    padding: 16px;
+  }
+
+  .solicitar-medico-lista {
+    max-height: 220px;
+  }
+
+  .solicitar-turno-campo select,
+  .solicitar-turno-campo textarea,
+  .solicitar-medico-boton,
+  .solicitar-fecha-boton {
+    font-size: 16px;
+  }
+
+  .solicitar-calendario {
+    padding: 12px;
+  }
+
+  .solicitar-calendario-header {
+    margin-bottom: 12px;
+  }
+
+  .solicitar-calendario-header strong {
+    font-size: 16px;
+  }
+
+  .solicitar-calendario-dias {
+    gap: 3px;
+  }
+
+  .solicitar-calendario-dias > strong {
+    font-size: 12px;
+    padding: 8px 0;
+  }
+
+  .solicitar-calendario-dia {
+    min-height: 38px;
+    padding: 2px;
+    font-size: 13px;
+  }
+
+  .solicitar-turno-confirmar {
+    width: 100%;
+  }
+}
+
+/* ==========================================
+   CELULARES PEQUEÑOS
+========================================== */
+
+@media (max-width: 380px) {
+  .solicitar-turno-page {
+    padding: 16px 12px;
+  }
+
+  .solicitar-turno-form {
+    padding: 12px;
+  }
+
+  .solicitar-calendario {
+    padding: 8px;
+  }
+
+  .solicitar-calendario-dias {
+    gap: 2px;
+  }
+
+  .solicitar-calendario-dia {
+    min-height: 36px;
+    font-size: 12px;
+  }
+}
