@@ -3,11 +3,15 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
 function RecuperarCorreo() {
-  const [username, setUsername] = useState("");
+  const [dni, setDni] = useState("");
   const [emailRespaldo, setEmailRespaldo] = useState("");
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
+
+  // ==========================================
+  // SOLICITAR RECUPERACIÓN DE CORREO
+  // ==========================================
 
   const solicitarRecuperacion = async (e) => {
     e.preventDefault();
@@ -27,7 +31,7 @@ function RecuperarCorreo() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            username: username.trim(),
+            dni: dni.trim(),
             email_respaldo: emailRespaldo.trim(),
           }),
         }
@@ -37,7 +41,9 @@ function RecuperarCorreo() {
 
       if (!respuesta.ok) {
         throw new Error(
-          datos.detail || "No se pudo procesar la solicitud."
+          typeof datos.detail === "string"
+            ? datos.detail
+            : "No se pudo procesar la solicitud."
         );
       }
 
@@ -45,6 +51,7 @@ function RecuperarCorreo() {
         datos.mensaje ||
           "Si los datos son correctos, recibirás un enlace de recuperación."
       );
+
     } catch (err) {
       setError(
         err.message || "Ocurrió un error. Intentá nuevamente."
@@ -54,48 +61,76 @@ function RecuperarCorreo() {
     }
   };
 
+  // ==========================================
+  // INTERFAZ
+  // ==========================================
+
   return (
     <div style={estilos.contenedor}>
-      <div style={estilos.tarjeta}>
+      <main style={estilos.tarjeta}>
+
         <h1 style={estilos.titulo}>UCBA</h1>
+
         <p style={estilos.subtitulo}>
           Sistema de Gestión Médica
         </p>
 
         <div style={estilos.icono}>✉️</div>
-        <h2>Recuperar mi correo electrónico</h2>
+
+        <h2 style={estilos.encabezado}>
+          Recuperar mi correo electrónico
+        </h2>
 
         <p style={estilos.descripcion}>
-          Ingresá tu nombre de usuario y el correo de
-          respaldo que verificaste anteriormente.
+          Ingresá tu DNI y el correo de respaldo que
+          verificaste anteriormente para recuperar
+          tu correo electrónico principal.
         </p>
 
         <form onSubmit={solicitarRecuperacion}>
-          <label style={estilos.label}>
-            Nombre de usuario
+
+          {/* DNI */}
+
+          <label htmlFor="dni-recuperacion" style={estilos.label}>
+            DNI
           </label>
+
           <input
+            id="dni-recuperacion"
             type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Tu nombre de usuario"
+            inputMode="numeric"
+            value={dni}
+            onChange={(e) => {
+              setDni(e.target.value.replace(/\D/g, ""));
+            }}
+            placeholder="Ingresá tu DNI sin puntos"
+            autoComplete="off"
             required
-            maxLength={100}
+            maxLength={20}
             style={estilos.input}
+            disabled={cargando}
           />
 
-          <label style={estilos.label}>
+          {/* CORREO DE RESPALDO */}
+
+          <label htmlFor="email-respaldo" style={estilos.label}>
             Correo de respaldo
           </label>
+
           <input
+            id="email-respaldo"
             type="email"
             value={emailRespaldo}
             onChange={(e) => setEmailRespaldo(e.target.value)}
             placeholder="correo@ejemplo.com"
+            autoComplete="email"
             required
             maxLength={100}
             style={estilos.input}
+            disabled={cargando}
           />
+
+          {/* MENSAJES */}
 
           {mensaje && (
             <p role="status" style={estilos.exito}>
@@ -109,24 +144,50 @@ function RecuperarCorreo() {
             </p>
           )}
 
+          {/* BOTÓN */}
+
           <button
             type="submit"
             disabled={cargando}
-            style={estilos.boton}
+            style={{
+              ...estilos.boton,
+              opacity: cargando ? 0.7 : 1,
+              cursor: cargando ? "not-allowed" : "pointer",
+            }}
           >
             {cargando
               ? "Enviando solicitud..."
               : "Enviar enlace de recuperación"}
           </button>
+
         </form>
 
-        <Link to="/login" style={estilos.enlace}>
-          Volver al inicio de sesión
-        </Link>
-      </div>
+        {/* NAVEGACIÓN */}
+
+        <nav style={estilos.navegacion}>
+          <Link
+            to="/recuperar-cuenta"
+            style={estilos.enlace}
+          >
+            ← Volver a recuperación de cuenta
+          </Link>
+
+          <Link
+            to="/login"
+            style={estilos.enlace}
+          >
+            ← Volver al inicio de sesión
+          </Link>
+        </nav>
+
+      </main>
     </div>
   );
 }
+
+// ==========================================
+// ESTILOS
+// ==========================================
 
 const estilos = {
   contenedor: {
@@ -136,36 +197,50 @@ const estilos = {
     justifyContent: "center",
     alignItems: "center",
     padding: "20px",
+    boxSizing: "border-box",
     fontFamily: "Arial, sans-serif",
   },
+
   tarjeta: {
-    backgroundColor: "#fff",
+    backgroundColor: "#ffffff",
     padding: "36px",
     borderRadius: "12px",
     width: "100%",
     maxWidth: "420px",
+    boxSizing: "border-box",
     textAlign: "center",
     boxShadow: "0 4px 15px rgba(0,0,0,0.08)",
   },
+
   titulo: {
     color: "#17233b",
     fontSize: "32px",
     marginBottom: "8px",
   },
+
   subtitulo: {
     color: "#64748b",
     marginBottom: "24px",
   },
+
   icono: {
     fontSize: "42px",
     marginBottom: "12px",
   },
+
+  encabezado: {
+    color: "#17233b",
+    fontSize: "23px",
+    marginBottom: "12px",
+  },
+
   descripcion: {
     color: "#475569",
     lineHeight: "1.6",
     fontSize: "14px",
     marginBottom: "24px",
   },
+
   label: {
     display: "block",
     textAlign: "left",
@@ -174,6 +249,7 @@ const estilos = {
     fontSize: "14px",
     marginBottom: "7px",
   },
+
   input: {
     width: "100%",
     padding: "12px",
@@ -183,32 +259,44 @@ const estilos = {
     boxSizing: "border-box",
     fontSize: "14px",
   },
+
   boton: {
     width: "100%",
     padding: "13px",
     backgroundColor: "#16a6bf",
-    color: "white",
+    color: "#ffffff",
     border: "none",
     borderRadius: "7px",
     fontWeight: "bold",
-    cursor: "pointer",
     fontSize: "14px",
   },
+
   exito: {
     color: "#166534",
     fontSize: "14px",
     lineHeight: "1.5",
+    marginBottom: "18px",
   },
+
   error: {
     color: "#b91c1c",
     fontSize: "14px",
+    marginBottom: "18px",
   },
+
+  navegacion: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "16px",
+    marginTop: "24px",
+  },
+
   enlace: {
-    display: "inline-block",
-    marginTop: "22px",
     color: "#0891b2",
     textDecoration: "none",
     fontWeight: "bold",
+    fontSize: "14px",
   },
 };
 

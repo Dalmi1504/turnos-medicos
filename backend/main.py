@@ -3,22 +3,33 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
+
 import mysql.connector
 from mysql.connector import IntegrityError
 import bcrypt
-from datetime import datetime, timedelta, timezone, date, time
-import os
 import jwt
+import os
+import re
+import smtplib
+import secrets
+import hashlib
+import logging
+from urllib.parse import urlencode
+
+from datetime import datetime, timedelta, timezone, date, time
 from dotenv import load_dotenv
 from pathlib import Path
-import re
+from email.message import EmailMessage
 
 # =========================================================
 # CONFIGURACIÓN DE SEGURIDAD JWT 9-10
 # =========================================================
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
-
+SMTP_HOST = os.getenv("SMTP_HOST")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 
 if not JWT_SECRET_KEY:
@@ -173,7 +184,7 @@ def conectar_db():
     conexion = mysql.connector.connect(
         host="localhost",
         user="root",
-        password="",
+        password=os.getenv("DB_PASSWORD", ""),
         database="clinica",
         use_pure=True
     )
@@ -188,6 +199,22 @@ def conectar_db():
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+class SolicitudRecuperacionPassword(BaseModel):
+    email: str
+
+class SolicitudRecuperacionEmail(BaseModel):
+    dni: str
+    email_respaldo: str
+
+
+class ConfirmarRecuperacionEmail(BaseModel):
+    token: str
+
+
+class RestablecerPasswordRequest(BaseModel):
+    token: str
+    nueva_password: str
 
 class PacienteNuevo(BaseModel):
     dni: str
@@ -361,6 +388,610 @@ def login_usuario(datos: LoginRequest):
     finally:
         cursor.close()
         conexion.close()
+
+# =========================================================
+# RECUPERACIÓN SEGURA DE CONTRASEÑA - UCBA
+# =========================================================
+
+def enviar_correo(destinatario: str, asunto: str, contenido: str):
+    if not all((SMTP_HOST, SMTP_USER, SMTP_PASSWORD)):
+        raise RuntimeError("Falta configurar SMTP en backend/.env")
+
+    mensaje = EmailMessage()
+    mensaje["From"] = SMTP_USER
+    mensaje["To"] = destinatario
+    mensaje["Subject"] = asunto
+    mensaje.set_content(contenido)
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as servidor:
+        servidor.ehlo()
+        servidor.starttls()
+        servidor.ehlo()
+        servidor.login(SMTP_USER, SMTP_PASSWORD)
+        servidor.send_message(mensaje)
+
+
+@app.post("/api/recuperar-password")
+def solicitar_recuperacion_password(datos: SolicitudRecuperacionPassword):
+    # La respuesta no permite averiguar si existe una cuenta con ese correo.
+    respuesta = {
+        "mensaje": "Si el correo está registrado, recibirás un enlace de recuperación."
+    }
+    email = datos.email.strip().lower()
+    if not email or len(email) > 254 or "@" not in email:
+        return respuesta
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT id_usuario, email FROM usuario
+            WHERE LOWER(email) = %s AND activo = 1
+            LIMIT 1
+        """, (email,))
+        usuario = cursor.fetchone()
+        if not usuario:
+            return respuesta
+
+        # Evita solicitudes repetidas para la misma cuenta durante un minuto.
+        cursor.execute("""
+            SELECT id_recuperacion FROM recuperacion_cuenta
+            WHERE id_usuario = %s AND tipo_recuperacion = 'PASSWORD'
+              AND fecha_creacion > DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE)
+            LIMIT 1
+        """, (usuario["id_usuario"],))
+        if cursor.fetchone():
+            return respuesta
+
+        token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+        cursor.execute("""
+            UPDATE recuperacion_cuenta
+            SET fecha_uso = UTC_TIMESTAMP()
+            WHERE id_usuario = %s AND tipo_recuperacion = 'PASSWORD'
+              AND fecha_uso IS NULL
+        """, (usuario["id_usuario"],))
+        cursor.execute("""
+            INSERT INTO recuperacion_cuenta
+                (id_usuario, token_hash, tipo_recuperacion, fecha_expiracion)
+            VALUES (%s, %s, 'PASSWORD',
+                    DATE_ADD(UTC_TIMESTAMP(), INTERVAL 15 MINUTE))
+        """, (usuario["id_usuario"], token_hash))
+        conexion.commit()
+
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+        enlace = frontend_url + "/restablecer-password?" + urlencode({"token": token})
+        cuerpo = (
+            "Recibimos una solicitud para recuperar tu contraseña de UCBA.\n\n"
+            "Usá este enlace para elegir una contraseña nueva:\n"
+            f"{enlace}\n\n"
+            "El enlace vence en 15 minutos y puede utilizarse una sola vez.\n"
+            "Si no hiciste esta solicitud, ignorá este correo."
+        )
+        try:
+            enviar_correo(usuario["email"], "UCBA - Recuperar contraseña", cuerpo)
+        except Exception:
+            logging.exception("Error al enviar correo de recuperación")
+        return respuesta
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+@app.post("/api/restablecer-password")
+def restablecer_password(datos: RestablecerPasswordRequest):
+    if len(datos.nueva_password) < 10 or len(datos.nueva_password.encode("utf-8")) > 72:
+        raise HTTPException(
+            status_code=400,
+            detail="La contraseña debe tener al menos 10 caracteres y no superar 72 bytes."
+        )
+    if len(datos.token) > 256 or not datos.token:
+        raise HTTPException(status_code=400, detail="Enlace inválido o vencido")
+
+    token_hash = hashlib.sha256(datos.token.encode("utf-8")).hexdigest()
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+    try:
+        # Bloqueo transaccional: impide utilizar dos veces el mismo token.
+        cursor.execute("""
+            SELECT r.id_recuperacion, r.id_usuario
+            FROM recuperacion_cuenta r
+            INNER JOIN usuario u ON u.id_usuario = r.id_usuario
+            WHERE r.token_hash = %s AND r.tipo_recuperacion = 'PASSWORD'
+              AND r.fecha_uso IS NULL
+              AND r.fecha_expiracion > UTC_TIMESTAMP()
+              AND u.activo = 1
+            FOR UPDATE
+        """, (token_hash,))
+        recuperacion = cursor.fetchone()
+        if not recuperacion:
+            raise HTTPException(status_code=400, detail="Enlace inválido, vencido o utilizado")
+
+        password_hash = bcrypt.hashpw(
+            datos.nueva_password.encode("utf-8"), bcrypt.gensalt()
+        ).decode("utf-8")
+        cursor.execute("""
+            UPDATE usuario SET password = %s WHERE id_usuario = %s
+        """, (password_hash, recuperacion["id_usuario"]))
+        cursor.execute("""
+            UPDATE recuperacion_cuenta SET fecha_uso = UTC_TIMESTAMP()
+            WHERE id_usuario = %s AND tipo_recuperacion = 'PASSWORD'
+              AND fecha_uso IS NULL
+        """, (recuperacion["id_usuario"],))
+        conexion.commit()
+        return {"mensaje": "Contraseña actualizada correctamente. Ya podés iniciar sesión."}
+    except Exception:
+        conexion.rollback()
+        raise
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+# =========================================================
+# RECUPERACIÓN DEL CORREO PRINCIPAL (SOLO CONSULTA)
+# =========================================================
+# Identificación mediante DNI del paciente y correo de respaldo verificado.
+# No se modifica el correo principal; se envía su información únicamente
+# al correo de respaldo después de confirmar un token de un solo uso.
+
+@app.post("/api/recuperar-email")
+def solicitar_recuperacion_email(datos: SolicitudRecuperacionEmail):
+    respuesta = {
+        "mensaje": "Si los datos son correctos, recibirás un enlace de recuperación."
+    }
+    dni = datos.dni.strip()
+    respaldo = datos.email_respaldo.strip().lower()
+    if not re.fullmatch(r"[0-9]{7,10}", dni) or not respaldo or len(respaldo) > 254 or "@" not in respaldo:
+        return respuesta
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT u.id_usuario, u.email, u.email_respaldo
+            FROM usuario u
+            INNER JOIN paciente p ON p.id_paciente = u.id_paciente
+            WHERE p.dni = %s
+              AND LOWER(u.email_respaldo) = %s
+              AND u.email_respaldo_verificado = 1
+              AND u.activo = 1 AND p.activo = 1
+            LIMIT 1
+        """, (dni, respaldo))
+        usuario = cursor.fetchone()
+        if not usuario:
+            return respuesta
+
+        cursor.execute("""
+            SELECT id_recuperacion FROM recuperacion_cuenta
+            WHERE id_usuario = %s AND tipo_recuperacion = 'EMAIL'
+              AND fecha_creacion > DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE)
+            LIMIT 1
+        """, (usuario["id_usuario"],))
+        if cursor.fetchone():
+            return respuesta
+
+        token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        cursor.execute("""
+            UPDATE recuperacion_cuenta SET fecha_uso = UTC_TIMESTAMP()
+            WHERE id_usuario = %s AND tipo_recuperacion = 'EMAIL'
+              AND fecha_uso IS NULL
+        """, (usuario["id_usuario"],))
+        cursor.execute("""
+            INSERT INTO recuperacion_cuenta
+                (id_usuario, token_hash, tipo_recuperacion, fecha_expiracion)
+            VALUES (%s, %s, 'EMAIL', DATE_ADD(UTC_TIMESTAMP(), INTERVAL 15 MINUTE))
+        """, (usuario["id_usuario"], token_hash))
+        conexion.commit()
+
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+        enlace = frontend_url + "/confirmar-recuperacion-email?" + urlencode({"token": token})
+        cuerpo = (
+            "Recibimos una solicitud para consultar el correo principal de UCBA.\n\n"
+            "Confirmá la solicitud mediante este enlace:\n"
+            f"{enlace}\n\n"
+            "El enlace vence en 15 minutos y se puede usar una sola vez.\n"
+            "Si no hiciste esta solicitud, ignorá este mensaje."
+        )
+        try:
+            enviar_correo(usuario["email_respaldo"], "UCBA - Recuperar correo principal", cuerpo)
+        except Exception:
+            logging.exception("Error al enviar enlace de recuperación de correo")
+        return respuesta
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+@app.post("/api/confirmar-recuperacion-email")
+def confirmar_recuperacion_email(datos: ConfirmarRecuperacionEmail):
+    if not datos.token or len(datos.token) > 256:
+        raise HTTPException(status_code=400, detail="Enlace inválido o vencido")
+
+    token_hash = hashlib.sha256(datos.token.encode("utf-8")).hexdigest()
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT r.id_recuperacion, u.email, u.email_respaldo
+            FROM recuperacion_cuenta r
+            INNER JOIN usuario u ON u.id_usuario = r.id_usuario
+            WHERE r.token_hash = %s AND r.tipo_recuperacion = 'EMAIL'
+              AND r.fecha_uso IS NULL
+              AND r.fecha_expiracion > UTC_TIMESTAMP()
+              AND u.activo = 1 AND u.email_respaldo_verificado = 1
+            FOR UPDATE
+        """, (token_hash,))
+        registro = cursor.fetchone()
+        if not registro:
+            raise HTTPException(status_code=400, detail="Enlace inválido, vencido o utilizado")
+
+        # El correo principal NO se muestra en la respuesta HTTP.
+        # Se envía solamente a la casilla de respaldo ya verificada.
+        enviar_correo(
+            registro["email_respaldo"],
+            "UCBA - Tu correo principal",
+            "El correo principal asociado a tu cuenta UCBA es: " + registro["email"] +
+            "\n\nSi no solicitaste esta información, contactá al centro médico."
+        )
+        cursor.execute("""
+            UPDATE recuperacion_cuenta SET fecha_uso = UTC_TIMESTAMP()
+            WHERE id_recuperacion = %s AND fecha_uso IS NULL
+        """, (registro["id_recuperacion"],))
+        conexion.commit()
+        return {"mensaje": "Te enviamos tu correo principal al correo de respaldo verificado."}
+    except HTTPException:
+        conexion.rollback()
+        raise
+    except Exception:
+        conexion.rollback()
+        logging.exception("Error al confirmar recuperación de correo")
+        raise HTTPException(status_code=503, detail="No se pudo completar la recuperación. Intentá nuevamente.")
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+# =========================================================
+# =========================================================
+# CORREO DE RESPALDO - usa recuperacion_cuenta existente
+# =========================================================
+
+class SolicitarCorreoRespaldo(BaseModel):
+    email_respaldo: str
+    password_actual: str
+
+
+class ConfirmarCorreoRespaldo(BaseModel):
+    token: str
+
+
+@app.get("/api/mi-correo-respaldo")
+def consultar_correo_respaldo(usuario=Depends(obtener_usuario_actual)):
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT email_respaldo, email_respaldo_verificado,
+                   fecha_verificacion_respaldo
+            FROM usuario WHERE id_usuario = %s AND activo = 1
+        """, (usuario["id_usuario"],))
+        fila = cursor.fetchone()
+        if not fila:
+            raise HTTPException(status_code=401, detail="Sesión inválida")
+        return fila
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+
+@app.post("/api/solicitar-correo-respaldo")
+def solicitar_correo_respaldo(
+    datos: SolicitarCorreoRespaldo,
+    usuario=Depends(obtener_usuario_actual)
+):
+    # Requiere sesión iniciada y contraseña actual.
+    # El correo de respaldo puede pertenecer a otra cuenta de UCBA.
+
+    nuevo_email = datos.email_respaldo.strip().lower()
+
+    if (
+        not 5 <= len(nuevo_email) <= 100
+        or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", nuevo_email)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Ingresá un correo válido"
+        )
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT email, password, email_respaldo,
+                   email_respaldo_verificado
+            FROM usuario
+            WHERE id_usuario = %s AND activo = 1
+            FOR UPDATE
+        """, (usuario["id_usuario"],))
+
+        cuenta = cursor.fetchone()
+
+        if not cuenta:
+            raise HTTPException(
+                status_code=401,
+                detail="Sesión inválida"
+            )
+
+        # Comprobar la contraseña de la cuenta actual.
+        try:
+            password_valida = bcrypt.checkpw(
+                datos.password_actual.encode("utf-8"),
+                cuenta["password"].encode("utf-8")
+            )
+        except (ValueError, TypeError):
+            password_valida = False
+
+        if not password_valida:
+            raise HTTPException(
+                status_code=403,
+                detail="Contraseña actual incorrecta"
+            )
+
+        # El respaldo no puede ser el mismo correo principal
+        # de ESTA cuenta.
+        if nuevo_email == cuenta["email"].lower():
+            raise HTTPException(
+                status_code=400,
+                detail="Usá un correo distinto al principal"
+            )
+
+        # Si ya está verificado para esta cuenta, no repetir.
+        if (
+            cuenta["email_respaldo"]
+            and cuenta["email_respaldo"].lower() == nuevo_email
+            and cuenta["email_respaldo_verificado"]
+        ):
+            conexion.rollback()
+            return {
+                "mensaje": "Ese correo de respaldo ya está verificado."
+            }
+
+        # IMPORTANTE:
+        # Permitimos compartir el correo de respaldo entre usuarios.
+        # No consultamos si pertenece a otra cuenta de UCBA.
+        # Cada asociación debe verificarse mediante un enlace.
+
+        # Limitar solicitudes repetidas.
+        cursor.execute("""
+            SELECT id_recuperacion
+            FROM recuperacion_cuenta
+            WHERE id_usuario = %s
+              AND tipo_recuperacion = 'VERIFICAR_RESPALDO'
+              AND fecha_creacion >
+                  DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE)
+            LIMIT 1
+        """, (usuario["id_usuario"],))
+
+        if cursor.fetchone():
+            raise HTTPException(
+                status_code=429,
+                detail="Esperá un minuto antes de solicitar otro enlace"
+            )
+
+        # Crear token seguro.
+        token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(
+            token.encode("utf-8")
+        ).hexdigest()
+
+        # Invalidar enlaces anteriores de esta cuenta.
+        cursor.execute("""
+            UPDATE recuperacion_cuenta
+            SET fecha_uso = UTC_TIMESTAMP()
+            WHERE id_usuario = %s
+              AND tipo_recuperacion = 'VERIFICAR_RESPALDO'
+              AND fecha_uso IS NULL
+        """, (usuario["id_usuario"],))
+
+        # Guardar solicitud pendiente.
+        # Todavía NO se modifica el correo de respaldo del usuario.
+        cursor.execute("""
+            INSERT INTO recuperacion_cuenta
+                (
+                    id_usuario,
+                    token_hash,
+                    tipo_recuperacion,
+                    fecha_expiracion,
+                    email_pendiente
+                )
+            VALUES (
+                %s,
+                %s,
+                'VERIFICAR_RESPALDO',
+                DATE_ADD(UTC_TIMESTAMP(), INTERVAL 15 MINUTE),
+                %s
+            )
+        """, (
+            usuario["id_usuario"],
+            token_hash,
+            nuevo_email
+        ))
+
+        conexion.commit()
+
+        # Enlace al frontend React.
+        frontend_url = os.getenv(
+            "FRONTEND_URL",
+            "http://localhost:5173"
+        ).rstrip("/")
+
+        enlace = (
+            frontend_url
+            + "/verificar-correo-respaldo?"
+            + urlencode({"token": token})
+        )
+
+        cuerpo = (
+            "Hola:\n\n"
+            "Se solicitó asociar esta dirección de correo como "
+            "respaldo de una cuenta del sistema UCBA.\n\n"
+            "Si aceptás que esta dirección sea utilizada como "
+            "correo de respaldo, confirmalo desde este enlace:\n\n"
+            f"{enlace}\n\n"
+            "El enlace vence en 15 minutos y solo puede "
+            "utilizarse una vez.\n\n"
+            "Si no reconocés esta solicitud, ignorá este mensaje.\n\n"
+            "UCBA - Sistema de Turnos Médicos"
+        )
+
+        try:
+            enviar_correo(
+                nuevo_email,
+                "UCBA - Verificar correo de respaldo",
+                cuerpo
+            )
+
+        except Exception:
+            logging.exception(
+                "Error al enviar verificación de correo de respaldo"
+            )
+
+            # Evitar que quede válido un enlace cuyo envío falló.
+            try:
+                cursor.execute("""
+                    UPDATE recuperacion_cuenta
+                    SET fecha_uso = UTC_TIMESTAMP()
+                    WHERE token_hash = %s
+                      AND tipo_recuperacion = 'VERIFICAR_RESPALDO'
+                      AND fecha_uso IS NULL
+                """, (token_hash,))
+                conexion.commit()
+            except Exception:
+                conexion.rollback()
+                logging.exception(
+                    "Error al invalidar token de respaldo"
+                )
+
+            raise HTTPException(
+                status_code=503,
+                detail="No se pudo enviar el correo. Intentá nuevamente más tarde"
+            )
+
+        return {
+            "mensaje": (
+                "Te enviamos un enlace para verificar "
+                "el correo de respaldo."
+            )
+        }
+
+    except Exception:
+        conexion.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+@app.post("/api/verificar-correo-respaldo")
+def verificar_correo_respaldo(datos: ConfirmarCorreoRespaldo):
+
+    if not datos.token or len(datos.token) > 256:
+        raise HTTPException(
+            status_code=400,
+            detail="Enlace inválido o vencido"
+        )
+
+    token_hash = hashlib.sha256(
+        datos.token.encode("utf-8")
+    ).hexdigest()
+
+    conexion = conectar_db()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        # Buscar token válido, no utilizado y no vencido.
+        cursor.execute("""
+            SELECT
+                r.id_recuperacion,
+                r.id_usuario,
+                r.email_pendiente
+            FROM recuperacion_cuenta r
+            INNER JOIN usuario u
+                ON u.id_usuario = r.id_usuario
+            WHERE r.token_hash = %s
+              AND r.tipo_recuperacion = 'VERIFICAR_RESPALDO'
+              AND r.fecha_uso IS NULL
+              AND r.fecha_expiracion > UTC_TIMESTAMP()
+              AND u.activo = 1
+            FOR UPDATE
+        """, (token_hash,))
+
+        registro = cursor.fetchone()
+
+        if not registro or not registro["email_pendiente"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Enlace inválido, vencido o utilizado"
+            )
+
+        # IMPORTANTE:
+        # No rechazamos el correo aunque pertenezca a otro
+        # usuario de UCBA.
+        #
+        # La verificación demuestra que alguien con acceso
+        # a esa casilla confirmó la asociación.
+
+        # Guardar correo de respaldo verificado.
+        cursor.execute("""
+            UPDATE usuario
+            SET
+                email_respaldo = %s,
+                email_respaldo_verificado = 1,
+                fecha_verificacion_respaldo = UTC_TIMESTAMP()
+            WHERE id_usuario = %s
+              AND activo = 1
+        """, (
+            registro["email_pendiente"],
+            registro["id_usuario"]
+        ))
+
+        if cursor.rowcount != 1:
+            raise HTTPException(
+                status_code=400,
+                detail="No se pudo verificar el correo"
+            )
+
+        # Invalidar todos los enlaces de verificación
+        # pendientes de esta cuenta.
+        cursor.execute("""
+            UPDATE recuperacion_cuenta
+            SET fecha_uso = UTC_TIMESTAMP()
+            WHERE id_usuario = %s
+              AND tipo_recuperacion = 'VERIFICAR_RESPALDO'
+              AND fecha_uso IS NULL
+        """, (registro["id_usuario"],))
+
+        conexion.commit()
+
+        return {
+            "mensaje": "Correo de respaldo verificado correctamente"
+        }
+
+    except Exception:
+        conexion.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        conexion.close()
+
+
 
 # =========================================================
 # PACIENTES
